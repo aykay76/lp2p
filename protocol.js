@@ -38,7 +38,8 @@ const SYSTEM_ACTIONS = {
     PONG: 'pong',
     LIST_PEERS: 'listPeers',
     PEER_LIST: 'peerList',
-    ERROR: 'error'
+    ERROR: 'error',
+    INTRODUCE: 'introduce' // Introduce a peer to another peer (host-mediated)
 };
 
 const CONTROL_ACTIONS = {
@@ -480,6 +481,16 @@ class MessageFactory {
     static createHello(from, peerInfo) {
         return new Message(MESSAGE_TYPES.SYSTEM, from, '*', {
             action: SYSTEM_ACTIONS.HELLO,
+            peerInfo
+        });
+    }
+
+    /**
+     * Create an introduction message (host tells one peer about another)
+     */
+    static createIntroduce(from, to, peerInfo) {
+        return new Message(MESSAGE_TYPES.SYSTEM, from, to, {
+            action: SYSTEM_ACTIONS.INTRODUCE,
             peerInfo
         });
     }

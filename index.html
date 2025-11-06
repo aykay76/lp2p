@@ -167,6 +167,75 @@
         .chat-section {
             grid-column: 1 / -1;
             border-top: 1px solid #e0e0e0;
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 0;
+        }
+
+        .peer-roster {
+            background: #f8f9fa;
+            border-right: 2px solid #e0e0e0;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .peer-roster h3 {
+            font-size: 14px;
+            color: #667eea;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .peer-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .peer-item:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .peer-item.selected {
+            border-color: #667eea;
+            background: #e8f0fe;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .peer-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .peer-status {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .trust-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+
+        .trust-unknown { background: #e0e0e0; color: #666; }
+        .trust-marginal { background: #fff3cd; color: #856404; }
+        .trust-full { background: #d4edda; color: #155724; }
+        .trust-ultimate { background: #cce5ff; color: #004085; }
+
+        .chat-content {
+            padding: 20px;
         }
 
         .messages {
@@ -277,52 +346,191 @@
             </div>
         </div>
 
+        <!-- Fingerprint Verification Modal -->
+        <div id="fingerprintModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
+            <div style="background: white; padding: 35px; border-radius: 12px; max-width: 650px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🔐</div>
+                    <h2 style="margin: 0 0 10px 0; color: #667eea; font-size: 24px;">Fingerprint Verification</h2>
+                    <p style="color: #666; margin: 0; font-size: 14px;">Compare fingerprints to verify identity</p>
+                </div>
+
+                <!-- Your Fingerprint -->
+                <div style="background: #e8f5e9; border: 3px solid #4caf50; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <div style="font-weight: 600; color: #2e7d32; margin-bottom: 12px; font-size: 16px;">
+                        ✓ Your Fingerprint
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; word-break: break-all; color: #1b5e20;" id="myFingerprintDisplay"></div>
+                </div>
+
+                <!-- Peer's Fingerprint -->
+                <div style="background: #fff3e0; border: 3px solid #ff9800; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                    <div style="font-weight: 600; color: #e65100; margin-bottom: 12px; font-size: 16px;">
+                        ⚠️ <span id="peerNameDisplay"></span>'s Fingerprint
+                    </div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; word-break: break-all; color: #e65100;" id="peerFingerprintDisplay"></div>
+                </div>
+
+                <!-- Verification Instructions -->
+                <div style="background: #f5f5f5; border-left: 4px solid #667eea; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px;">
+                    <div style="font-weight: 600; margin-bottom: 10px; color: #667eea;">📋 Verification Steps:</div>
+                    <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 13px; line-height: 1.6;">
+                        <li>Contact <strong id="peerNameDisplay2"></strong> through a trusted channel (phone, video, in person)</li>
+                        <li>Ask them to read their fingerprint aloud</li>
+                        <li>Compare it character-by-character with the orange fingerprint above</li>
+                        <li>If they match exactly, set trust to "Full Trust"</li>
+                        <li>If they don't match, set trust to "Untrusted" immediately</li>
+                    </ol>
+                </div>
+
+                <!-- Trust Level Selector -->
+                <div style="background: #fafafa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #333; font-size: 14px;">
+                        Set Trust Level:
+                    </label>
+                    <select id="trustLevelModal" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">
+                        <option value="unknown">❓ Unknown - Not yet verified</option>
+                        <option value="untrusted">⛔ Untrusted - Do NOT trust</option>
+                        <option value="marginal">⚠️ Marginal Trust - Partially verified</option>
+                        <option value="full">✅ Full Trust - Fingerprint verified</option>
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="closeFingerprintModal()" style="flex: 1; padding: 12px; background: #e0e0e0; color: #666; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button onclick="saveTrustLevel()" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Save Trust Level</button>
+                </div>
+            </div>
+        </div>
+
         <div class="main-content">
-            <!-- Peer A (Offerer) Panel -->
-            <div class="panel">
-                <h2>👤 Peer A (Offerer)</h2>
+            <!-- Easy Connection Panel -->
+            <div class="panel" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea;">
+                <h2>🚀 Quick Connect</h2>
                 
-                <div class="instructions">
-                    <strong>Step 1:</strong> Click "Create Offer" to start
+                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                    <button class="btn-primary" style="flex: 1;" onclick="createRoom()">🏠 Create Room</button>
+                    <button class="btn-primary" style="flex: 1;" onclick="showJoinRoomDialog()">🔗 Join Room</button>
                 </div>
 
-                <div class="button-group">
-                    <button class="btn-primary" id="createOfferBtn" onclick="createOffer()">Create Offer</button>
+                <div id="roomDisplay" style="display: none; padding: 16px; background: white; border-radius: 8px; margin-bottom: 12px; text-align: center;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">Room Code</div>
+                    <div id="roomCodeDisplay" style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #667eea; font-family: monospace; margin-bottom: 12px;">------</div>
+                    <div style="font-size: 12px; color: #888; margin-bottom: 12px;">Share this code with others to let them join</div>
+                    <div id="qrCodeContainer" style="display: flex; justify-content: center; margin: 12px 0;">
+                        <img id="qrCodeImage" style="max-width: 200px; border: 2px solid #ddd; border-radius: 8px; display: none;">
+                    </div>
+                    <button onclick="copyRoomCode()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-right: 8px;">📋 Copy Code</button>
+                    <button onclick="showQRCode()" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;">📱 Show QR</button>
                 </div>
 
-                <textarea id="offerText" class="signal-area" placeholder="Your offer will appear here..." readonly></textarea>
-                
-                <div class="help-text">📋 Copy this offer and paste it in Peer B on the other browser</div>
-
-                <h2 style="margin-top: 20px;">📥 Paste Answer Here</h2>
-                
-                <textarea id="answerInput" class="signal-area" placeholder="Paste the answer from Peer B here..."></textarea>
-                
-                <button class="btn-success" id="setAnswerBtn" onclick="setAnswer()" disabled>Apply Answer</button>
+                <div style="font-size: 12px; color: #666; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                    <strong>💡 Tip:</strong> Room-based connection uses localStorage. Works great for same-device testing or devices on the same network with shared storage.
+                </div>
             </div>
 
-            <!-- Peer B (Answerer) Panel -->
-            <div class="panel">
-                <h2>👤 Peer B (Answerer)</h2>
+            <!-- Manual Signaling (Advanced) - Collapsed by default -->
+            <details class="panel" style="border: 1px solid #ddd;">
+                <summary style="cursor: pointer; padding: 12px; background: #f8f9fa; border-radius: 6px; font-weight: 600; font-size: 14px;">
+                    ⚙️ Manual Signaling (Advanced)
+                </summary>
                 
-                <div class="instructions">
-                    <strong>Step 2:</strong> Paste the offer from Peer A
-                </div>
+                <div style="margin-top: 12px;">
+                    <!-- Peer A (Offerer) Panel -->
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 16px; margin-bottom: 10px;">👤 Peer A (Offerer)</h3>
+                        
+                        <div class="instructions">
+                            <strong>Step 1:</strong> Click "Create Offer" to start
+                        </div>
 
-                <textarea id="offerInput" class="signal-area" placeholder="Paste the offer from Peer A here..."></textarea>
-                
-                <div class="button-group">
-                    <button class="btn-primary" id="createAnswerBtn" onclick="createAnswer()">Create Answer</button>
-                </div>
+                        <div class="button-group">
+                            <button class="btn-primary" id="createOfferBtn" onclick="createOffer()">Create Offer</button>
+                        </div>
 
-                <textarea id="answerText" class="signal-area" placeholder="Your answer will appear here..." readonly></textarea>
-                
-                <div class="help-text">📋 Copy this answer and paste it in Peer A on the other browser</div>
-            </div>
+                        <textarea id="offerText" class="signal-area" placeholder="Your offer will appear here..." readonly></textarea>
+                        
+                        <div class="help-text">📋 Copy this offer and paste it in Peer B on the other browser</div>
+
+                        <h3 style="font-size: 16px; margin: 20px 0 10px;">📥 Paste Answer Here</h3>
+                        
+                        <textarea id="answerInput" class="signal-area" placeholder="Paste the answer from Peer B here..."></textarea>
+                        
+                        <button class="btn-success" id="setAnswerBtn" onclick="setAnswer()" disabled>Apply Answer</button>
+                    </div>
+
+                    <!-- Peer B (Answerer) Panel -->
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 16px; margin-bottom: 10px;">👤 Peer B (Answerer)</h3>
+                        
+                        <div class="instructions">
+                            <strong>Step 2:</strong> Paste the offer from Peer A
+                        </div>
+
+                        <textarea id="offerInput" class="signal-area" placeholder="Paste the offer from Peer A here..."></textarea>
+                        
+                        <div class="button-group">
+                            <button class="btn-primary" id="createAnswerBtn" onclick="createAnswer()">Create Answer</button>
+                        </div>
+
+                        <textarea id="answerText" class="signal-area" placeholder="Your answer will appear here..." readonly></textarea>
+                        
+                        <div class="help-text">📋 Copy this answer and paste it in Peer A on the other browser</div>
+                    </div>
+
+                    <!-- Additional Offers (Multi-Party Host) -->
+                    <div id="additionalOffersPanel">
+                        <h3 style="font-size: 16px; margin-bottom: 10px;">🧩 Additional Offers</h3>
+                        <div style="font-size:12px; color:#555; margin-bottom:8px;">Create separate offers for each extra peer you want to join. Each peer creates an answer from its own browser and you apply it here.</div>
+                        <div id="multiOffersContainer" style="display:flex; flex-direction:column; gap:14px;"></div>
+                        <button style="margin-top:8px; background:#4a5568; color:#fff; padding:8px 14px; border:none; border-radius:5px; cursor:pointer; font-size:13px;" onclick="createAdditionalOffer()">➕ New Offer</button>
+                        <div class="help-text">Use a new offer per joining peer. Answers can't be reused.</div>
+                    </div>
+                </div>
+            </details>
 
             <!-- Chat Section -->
             <div class="chat-section panel">
-                <h2>💬 Messages</h2>
+                <!-- Peer Roster Sidebar -->
+                <div class="peer-roster">
+                    <h3>👥 Connected Peers</h3>
+                    <div id="peerRosterList">
+                        <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                            No peers connected
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Content -->
+                <div class="chat-content">
+                    <h2>💬 Messages</h2>
+                    
+                    <!-- Peer Info Panel (shown when peer selected) -->
+                    <div id="peerInfoPanel" style="display: none; background: #f8f9fa; border: 2px solid #667eea; border-radius: 6px; padding: 12px; margin-bottom: 15px; font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <strong>Selected Peer</strong><br>
+                                <div id="peerName" style="font-size: 14px; font-weight: 600; color: #667eea; margin: 5px 0;"></div>
+                                <div style="font-family: monospace; font-size: 10px;">
+                                    Key ID: <code id="peerKeyId"></code><br>
+                                    Fingerprint: <code id="peerFingerprint" style="font-size: 9px;"></code>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="margin-bottom: 8px;">
+                                    <strong style="font-size: 11px;">Trust Level:</strong><br>
+                                    <select id="trustLevelSelect" onchange="updateTrustLevel()" style="padding: 4px; border-radius: 4px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px;">
+                                        <option value="unknown">❓ Unknown</option>
+                                        <option value="untrusted">⛔ Untrusted</option>
+                                        <option value="marginal">⚠️ Marginal</option>
+                                        <option value="full">✅ Full Trust</option>
+                                </select>
+                            </div>
+                            <button onclick="showFingerprintComparison()" style="font-size: 11px; padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">🔍 Verify Fingerprint</button>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="messages" id="messages">
                     <div style="text-align: center; color: #999; padding: 40px 20px;">
@@ -334,6 +542,7 @@
                     <input type="text" id="messageInput" placeholder="Type your message..." disabled>
                     <button class="btn-primary" id="sendBtn" onclick="sendMessage()" disabled>Send</button>
                 </div>
+                </div>
             </div>
         </div>
     </div>
@@ -343,6 +552,12 @@
     
     <!-- Identity Layer -->
     <script src="identity.js"></script>
+
+    <!-- PeerJS for signaling -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <!-- Signaling Layer -->
+    <script src="signaling.js"></script>
 
     <script>
         // WebRTC Configuration
@@ -362,6 +577,186 @@
         let messageHandler = null;  // Message handler instance
         let identityManager = null;  // Identity manager instance
         let ownIdentity = null;  // Our identity
+    // Multi-party additions
+    const connections = new Map(); // connectionId -> { pc, dc, peerId, state }
+    let activePeerId = null; // Currently focused peer for UI/trust panel
+
+    // Room-based signaling
+    let roomSignaling = null;
+    let currentRoomCode = null;
+    let isRoomHost = false;
+
+    // Helper: get connection entry by peerId
+    function getConnectionByPeerId(pid) {
+        for (const [cid, conn] of connections.entries()) {
+            if (conn.peerId === pid) return conn;
+        }
+        return null;
+    }
+
+    // Helper: relay a message from one peer to all others (host only)
+    function relayToOthers(message, rawWire) {
+        if (connections.size < 2) return; // Nothing to relay
+        for (const [cid, conn] of connections.entries()) {
+            if (!conn.dc || conn.dc.readyState !== 'open') continue;
+            if (conn.peerId === message.from) continue; // Skip sender
+            try {
+                conn.dc.send(rawWire);
+            } catch (e) {
+                console.warn('Relay send failed for connection', cid, e);
+            }
+        }
+    }
+
+    // Build peerInfo from trust record
+    function buildPeerInfo(record) {
+        return {
+            id: record.peerId,
+            keyId: record.keyId,
+            fingerprint: record.fingerprint,
+            publicKey: record.publicKey,
+            profile: record.profile
+        };
+    }
+
+        // Utility: wait for ICE on a specific PeerConnection
+        function waitForICEOn(pc) {
+            return new Promise((resolve) => {
+                if (pc.iceGatheringState === 'complete') {
+                    resolve();
+                } else {
+                    pc.addEventListener('icegatheringstatechange', () => {
+                        if (pc.iceGatheringState === 'complete') {
+                            resolve();
+                        }
+                    });
+                }
+            });
+        }
+
+        // Create additional offer (host side multi-party)
+        async function createAdditionalOffer() {
+            try {
+                const connectionId = crypto.randomUUID();
+                const pc = new RTCPeerConnection(config);
+                const dc = pc.createDataChannel('messages');
+
+                connections.set(connectionId, { pc, dc, peerId: null, state: 'offer-created' });
+                console.log('Creating additional offer, connection:', connectionId);
+
+                // Wire handlers (minimal duplication from setupDataChannel but isolated per connection)
+                dc.onopen = () => {
+                    console.log('Data channel opened (multi)', connectionId);
+                    const entry = connections.get(connectionId);
+                    if (entry) entry.state = 'open';
+                    sendHello(dc); // introduce via this channel only
+                    enableChat();
+                };
+                dc.onclose = () => {
+                    console.log('Data channel closed (multi)', connectionId);
+                    const entry = connections.get(connectionId);
+                    if (entry) entry.state = 'closed';
+                    disableChat();
+                };
+                dc.onmessage = async (event) => {
+                    console.log('Multi channel message raw:', event.data);
+                    try {
+                        const message = LP2P.Message.deserialize(event.data);
+                        if (message.signature) {
+                            const isValid = await verifyMessage(message);
+                            message.signatureValid = isValid;
+                        }
+                        await messageHandler.handle(message);
+                        // Relay (host) incoming text to other peers
+                        if (connections.size > 1 && message.type === LP2P.MESSAGE_TYPES.TEXT && message.from !== peerId) {
+                            relayToOthers(message, event.data);
+                        }
+                        if (message.from) {
+                            activePeerId = message.from;
+                        }
+                    } catch (err) {
+                        console.error('Error in multi channel message:', err);
+                    }
+                };
+
+                pc.onconnectionstatechange = () => {
+                    console.log('Multi PC state', connectionId, pc.connectionState);
+                    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                        const entry = connections.get(connectionId);
+                        if (entry) entry.state = pc.connectionState;
+                    }
+                };
+
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await waitForICEOn(pc);
+
+                // Render offer block UI
+                const container = document.getElementById('multiOffersContainer');
+                const blockId = 'offer_block_' + connectionId;
+                const answerInputId = 'answer_input_' + connectionId;
+                const applyBtnId = 'apply_btn_' + connectionId;
+                const offerStr = JSON.stringify(pc.localDescription);
+                const div = document.createElement('div');
+                div.id = blockId;
+                div.style.border = '1px solid #ccc';
+                div.style.padding = '10px';
+                div.style.borderRadius = '6px';
+                div.style.background = '#f9fafb';
+                div.innerHTML = `
+                    <div style=\"display:flex; justify-content:space-between; align-items:center;\">
+                        <strong style=\"font-size:13px;\">Offer for Peer (ID: ${connectionId.substring(0,8)})</strong>
+                        <span style=\"font-size:10px; color:#666;\" id=\"state_${connectionId}\">waiting-answer</span>
+                    </div>
+                    <textarea readonly style=\"width:100%; height:90px; font-size:11px; margin-top:6px;\">${offerStr}</textarea>
+                    <div style=\"font-size:11px; color:#555; margin:4px 0;\">Peer should paste this offer in their browser and generate an answer. Paste their answer below:</div>
+                    <textarea id=\"${answerInputId}\" style=\"width:100%; height:90px; font-size:11px;\" placeholder=\"Paste answer here...\"></textarea>
+                    <div style=\"display:flex; gap:8px; margin-top:6px;\">
+                        <button id=\"${applyBtnId}\" style=\"flex:1; background:#667eea; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px;\" onclick=\"applyAdditionalAnswer('${connectionId}', '${answerInputId}', '${applyBtnId}')\">Apply Answer</button>
+                        <button style=\"background:#e53e3e; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px;\" onclick=\"removeOfferBlock('${connectionId}', '${blockId}')\">Remove</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            } catch (error) {
+                console.error('Error creating additional offer:', error);
+                alert('Failed to create additional offer: ' + error.message);
+            }
+        }
+
+        function removeOfferBlock(connectionId, blockId) {
+            const entry = connections.get(connectionId);
+            if (entry && entry.pc && entry.pc.connectionState !== 'connected') {
+                try { entry.pc.close(); } catch(_){}
+                connections.delete(connectionId);
+            }
+            const el = document.getElementById(blockId);
+            if (el) el.remove();
+        }
+
+        async function applyAdditionalAnswer(connectionId, answerInputId, applyBtnId) {
+            try {
+                const entry = connections.get(connectionId);
+                if (!entry) {
+                    alert('Unknown connection');
+                    return;
+                }
+                const answerText = document.getElementById(answerInputId).value.trim();
+                if (!answerText) {
+                    alert('Paste an answer first');
+                    return;
+                }
+                const answer = JSON.parse(answerText);
+                await entry.pc.setRemoteDescription(new RTCSessionDescription(answer));
+                entry.state = 'connected-or-connecting';
+                document.getElementById('state_' + connectionId).textContent = 'applied';
+                const btn = document.getElementById(applyBtnId);
+                if (btn) btn.disabled = true;
+                console.log('Applied answer for connection', connectionId);
+            } catch (error) {
+                console.error('Error applying additional answer:', error);
+                alert('Failed to apply answer: ' + error.message);
+            }
+        }
 
         // UI Elements
         const statusIndicator = document.getElementById('statusIndicator');
@@ -430,8 +825,17 @@
          * Setup data channel event handlers
          */
         function setupDataChannel() {
+            // Register a new connection entry
+            const connectionId = crypto.randomUUID();
+            connections.set(connectionId, { pc: peerConnection, dc: dataChannel, peerId: null, state: 'pending' });
+            console.log('Registered new connection', connectionId);
+
             dataChannel.onopen = () => {
                 console.log('Data channel opened');
+                const conn = connections.get(connectionId);
+                if (conn) {
+                    conn.state = 'open';
+                }
                 
                 // Send hello message to introduce ourselves
                 sendHello();
@@ -441,6 +845,10 @@
 
             dataChannel.onclose = () => {
                 console.log('Data channel closed');
+                const conn = connections.get(connectionId);
+                if (conn) {
+                    conn.state = 'closed';
+                }
                 
                 // Send goodbye if still connected to peer
                 if (remotePeerId) {
@@ -467,6 +875,16 @@
                     
                     // Handle the message
                     await messageHandler.handle(message);
+
+                    // Relay if host has multiple connections and this is peer-originated text
+                    if (connections.size > 1 && message.type === LP2P.MESSAGE_TYPES.TEXT && message.from !== peerId) {
+                        relayToOthers(message, event.data);
+                    }
+
+                    // Set active peer for UI focus
+                    if (message.from) {
+                        activePeerId = message.from;
+                    }
                 } catch (error) {
                     console.error('Error handling message:', error);
                     
@@ -487,6 +905,295 @@
                 console.error('Data channel error:', error);
             };
         }
+
+        // ====================================================================
+        // Room-Based Signaling Functions
+        // ====================================================================
+
+        /**
+         * Create a new room and become host
+         */
+        async function createRoom() {
+            try {
+                currentRoomCode = LP2PSignaling.PeerJSSignaling.generateRoomCode();
+                isRoomHost = true;
+                
+                console.log('Creating room', currentRoomCode, 'with peerId', peerId);
+                
+                roomSignaling = new LP2PSignaling.PeerJSSignaling();
+                await roomSignaling.joinRoom(currentRoomCode, 'host'); // Host always uses 'host' as peerId
+                
+                // Host receives offers from joining peers
+                roomSignaling.onOffer = async (sdp, fromPeerId) => {
+                    console.log('HOST: Received offer from', fromPeerId);
+                    await handleIncomingOffer(sdp, fromPeerId);
+                };
+                
+                // Host may also receive answers if needed
+                roomSignaling.onAnswer = async (sdp, fromPeerId) => {
+                    console.log('HOST: Received answer from', fromPeerId);
+                    await handleIncomingAnswer(sdp, fromPeerId);
+                };
+                
+                // Display room code
+                document.getElementById('roomCodeDisplay').textContent = currentRoomCode;
+                document.getElementById('roomDisplay').style.display = 'block';
+                
+                addSystemMessage(`🏠 Room created: ${currentRoomCode}`);
+                updateStatus('connecting', `Room ${currentRoomCode} - Waiting for peers`);
+            } catch (error) {
+                console.error('Error creating room:', error);
+                alert('Failed to create room: ' + error.message);
+            }
+        }
+
+        /**
+         * Show dialog to join existing room
+         */
+        function showJoinRoomDialog() {
+            const code = prompt('Enter room code (6 characters):');
+            if (code && code.trim().length === 6) {
+                joinRoom(code.trim().toUpperCase());
+            } else if (code) {
+                alert('Invalid room code. Must be 6 characters.');
+            }
+        }
+
+        /**
+         * Join an existing room
+         */
+        async function joinRoom(roomCode) {
+            try {
+                currentRoomCode = roomCode;
+                isRoomHost = false;
+                
+                console.log('PEER: Joining room', currentRoomCode, 'with peerId', peerId);
+                
+                roomSignaling = new LP2PSignaling.PeerJSSignaling();
+                await roomSignaling.joinRoom(currentRoomCode, peerId);
+                
+                // Client receives offers from host
+                roomSignaling.onOffer = async (sdp, fromPeerId) => {
+                    console.log('PEER: Received offer from host', fromPeerId);
+                    await handleIncomingOffer(sdp, fromPeerId);
+                };
+                
+                // Client receives answers to our offer
+                roomSignaling.onAnswer = async (sdp, fromPeerId) => {
+                    console.log('PEER: Received answer from', fromPeerId);
+                    await handleIncomingAnswer(sdp, fromPeerId);
+                };
+                
+                // Create and post our offer to the room
+                console.log('PEER: Creating and posting offer...');
+                await createAndPostOffer();
+                
+                addSystemMessage(`🔗 Joined room: ${currentRoomCode}`);
+                updateStatus('connecting', `Connecting to room ${currentRoomCode}...`);
+            } catch (error) {
+                console.error('Error joining room:', error);
+                alert('Failed to join room: ' + error.message);
+            }
+        }
+
+        /**
+         * Create offer and post to room
+         */
+        async function createAndPostOffer() {
+            try {
+                const connectionId = crypto.randomUUID();
+                const pc = new RTCPeerConnection(config);
+                const dc = pc.createDataChannel('messages');
+
+                connections.set(connectionId, { pc, dc, peerId: null, state: 'offer-created' });
+                
+                setupDataChannelForConnection(dc, connectionId);
+                setupPeerConnectionForConnection(pc, connectionId);
+
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await waitForICEOn(pc);
+
+                const offerSDP = JSON.stringify(pc.localDescription);
+                await roomSignaling.postOffer(offerSDP, '*');  // Broadcast to all (host will pick it up)
+                
+                console.log('Posted offer to room successfully');
+            } catch (error) {
+                console.error('Failed to create/post offer:', error);
+                alert('Could not connect to room. Make sure the host has created the room first!\n\nError: ' + error.message);
+            }
+        }
+
+        /**
+         * Handle incoming offer (host or peer)
+         */
+        async function handleIncomingOffer(sdpString, fromPeerId) {
+            const connectionId = crypto.randomUUID();
+            const pc = new RTCPeerConnection(config);
+
+            connections.set(connectionId, { pc, dc: null, peerId: null, state: 'answering', remotePeerId: fromPeerId });
+            
+            setupPeerConnectionForConnection(pc, connectionId);
+
+            // Incoming data channel
+            pc.ondatachannel = (event) => {
+                const dc = event.channel;
+                const conn = connections.get(connectionId);
+                if (conn) conn.dc = dc;
+                setupDataChannelForConnection(dc, connectionId);
+            };
+
+            const offer = JSON.parse(sdpString);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await waitForICEOn(pc);
+
+            const answerSDP = JSON.stringify(pc.localDescription);
+            roomSignaling.postAnswer(answerSDP, fromPeerId);
+            
+            console.log('Posted answer to room');
+        }
+
+        /**
+         * Handle incoming answer
+         */
+        async function handleIncomingAnswer(sdpString, fromPeerId) {
+            console.log('🔍 Looking for connection to apply answer from', fromPeerId);
+            console.log('Available connections:', Array.from(connections.entries()).map(([id, c]) => ({
+                id: id.substring(0, 8),
+                state: c.state,
+                hasRemote: !!c.pc.remoteDescription,
+                signalingState: c.pc.signalingState
+            })));
+            
+            // Find connection awaiting answer (check for offer-created OR connecting without remote description)
+            for (const [cid, conn] of connections.entries()) {
+                if ((conn.state === 'offer-created' || conn.state === 'connecting') && !conn.pc.remoteDescription) {
+                    console.log('✅ Applying answer to connection', cid.substring(0, 8));
+                    const answer = JSON.parse(sdpString);
+                    await conn.pc.setRemoteDescription(new RTCSessionDescription(answer));
+                    console.log('✅ Answer applied successfully, ICE state:', conn.pc.iceConnectionState);
+                    return;
+                }
+            }
+            console.error('❌ No connection found to apply answer!');
+        }
+
+        /**
+         * Setup data channel for a specific connection
+         */
+        function setupDataChannelForConnection(dc, connectionId) {
+            dc.onopen = () => {
+                console.log('Data channel opened (room)', connectionId);
+                const entry = connections.get(connectionId);
+                if (entry) entry.state = 'open';
+                sendHello(dc);
+                enableChat();
+            };
+            
+            dc.onclose = () => {
+                console.log('Data channel closed (room)', connectionId);
+                const entry = connections.get(connectionId);
+                if (entry) entry.state = 'closed';
+            };
+            
+            dc.onmessage = async (event) => {
+                try {
+                    const message = LP2P.Message.deserialize(event.data);
+                    if (message.signature) {
+                        const isValid = await verifyMessage(message);
+                        message.signatureValid = isValid;
+                    }
+                    await messageHandler.handle(message);
+                    
+                    // Relay for host
+                    if (isRoomHost && connections.size > 1 && message.type === LP2P.MESSAGE_TYPES.TEXT && message.from !== peerId) {
+                        relayToOthers(message, event.data);
+                    }
+                    
+                    if (message.from) {
+                        activePeerId = message.from;
+                    }
+                } catch (err) {
+                    console.error('Error in room channel message:', err);
+                }
+            };
+        }
+
+        /**
+         * Setup peer connection for a specific connection
+         */
+        function setupPeerConnectionForConnection(pc, connectionId) {
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('ICE candidate:', event.candidate.type, event.candidate.protocol);
+                } else {
+                    console.log('ICE gathering complete');
+                }
+            };
+            
+            pc.onicegatheringstatechange = () => {
+                console.log('ICE gathering state:', pc.iceGatheringState);
+            };
+            
+            pc.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', pc.iceConnectionState);
+            };
+            
+            pc.onconnectionstatechange = () => {
+                console.log('Room PC state', connectionId, pc.connectionState);
+                const entry = connections.get(connectionId);
+                if (entry) {
+                    entry.state = pc.connectionState;
+                    if (pc.connectionState === 'connected') {
+                        updateStatus('connected', `Connected to room ${currentRoomCode}`);
+                    } else if (pc.connectionState === 'failed') {
+                        console.error('WebRTC connection failed!');
+                        updateStatus('error', 'Connection failed');
+                    }
+                }
+            };
+        }
+
+        /**
+         * Copy room code to clipboard
+         */
+        function copyRoomCode() {
+            if (currentRoomCode) {
+                navigator.clipboard.writeText(currentRoomCode).then(() => {
+                    alert('Room code copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    // Fallback: select text
+                    const display = document.getElementById('roomCodeDisplay');
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(display);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                });
+            }
+        }
+
+        /**
+         * Show QR code for room
+         */
+        function showQRCode() {
+            if (currentRoomCode) {
+                const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+                const qrUrl = LP2PSignaling.generateQRCode(url);
+                const img = document.getElementById('qrCodeImage');
+                img.src = qrUrl;
+                img.style.display = 'block';
+                addSystemMessage('📱 QR code generated - scan to join room');
+            }
+        }
+
+        // ====================================================================
+        // Manual Signaling Functions (Original)
+        // ====================================================================
 
         /**
          * Create an offer (Peer A)
@@ -608,37 +1315,69 @@
             
             if (!text) return;
             
-            if (!dataChannel || dataChannel.readyState !== 'open') {
-                alert('Not connected');
-                return;
-            }
-
-            if (!remotePeerId) {
-                alert('Remote peer not identified yet');
-                return;
-            }
-
             try {
-                // Create structured message
+                // Multi-party broadcast if we have any registered connections
+                if (connections.size > 0) {
+                    let sentCount = 0;
+                    let unidentifiedConnections = 0;
+                    for (const [cid, conn] of connections.entries()) {
+                        if (!conn.dc || conn.dc.readyState !== 'open') continue;
+                        if (!conn.peerId) { unidentifiedConnections++; continue; } // wait for HELLO mapping
+                        const msg = LP2P.MessageFactory.createText(peerId, conn.peerId, text);
+                        await signMessage(msg);
+                        const validation = LP2P.MessageValidator.validate(msg);
+                        if (!validation.valid) {
+                            console.warn('Validation failed for connection', cid, validation.errors);
+                            continue;
+                        }
+                        conn.dc.send(msg.serialize());
+                        sentCount++;
+                    }
+                    // Fallback: if exactly one open connection with no peerId yet but we have remotePeerId, assign and retry once
+                    if (sentCount === 0) {
+                        if (unidentifiedConnections === connections.size && connections.size === 1) {
+                            const [[cid, onlyConn]] = connections.entries();
+                            if (remotePeerId) {
+                                console.log('Assigning peerId late to connection', cid, 'from remotePeerId');
+                                onlyConn.peerId = remotePeerId;
+                                const msg = LP2P.MessageFactory.createText(peerId, onlyConn.peerId, text);
+                                await signMessage(msg);
+                                const validation = LP2P.MessageValidator.validate(msg);
+                                if (validation.valid) {
+                                    onlyConn.dc.send(msg.serialize());
+                                    sentCount = 1;
+                                }
+                            }
+                        }
+                    }
+                    if (sentCount === 0) {
+                        alert('Awaiting peer introduction (HELLO). Please wait a moment and retry.');
+                        return;
+                    }
+                    addMessage(text + (sentCount > 1 ? ` (broadcast to ${sentCount} peers)` : ''), true);
+                    messageInput.value = '';
+                    return;
+                }
+
+                // Legacy single-connection fallback
+                if (!dataChannel || dataChannel.readyState !== 'open') {
+                    alert('Not connected');
+                    return;
+                }
+                if (!remotePeerId) {
+                    alert('Remote peer not identified yet');
+                    return;
+                }
                 const message = LP2P.MessageFactory.createText(peerId, remotePeerId, text);
-                
-                // Sign the message
                 await signMessage(message);
-                
-                // Validate before sending
                 const validation = LP2P.MessageValidator.validate(message);
                 if (!validation.valid) {
                     console.error('Message validation failed:', validation.errors);
                     alert('Failed to send message: ' + validation.errors.join(', '));
                     return;
                 }
-                
-                // Send the message
                 sendRawMessage(message);
-                
-                // Display in our UI
                 addMessage(text, true, message.id);
-                
                 messageInput.value = '';
             } catch (error) {
                 console.error('Error sending message:', error);
@@ -649,10 +1388,17 @@
         /**
          * Send a raw protocol message
          */
-        function sendRawMessage(message) {
+        function sendRawMessage(message, targetChannel = null) {
             const wire = message.serialize();
             console.log('Sending message:', message);
-            dataChannel.send(wire);
+            
+            // Use specified channel or legacy single dataChannel
+            const dc = targetChannel || dataChannel;
+            if (!dc || dc.readyState !== 'open') {
+                console.error('Cannot send message: channel not open');
+                return;
+            }
+            dc.send(wire);
         }
 
         /**
@@ -762,9 +1508,184 @@
         }
 
         /**
+         * Display peer information panel
+         */
+        function displayPeerInfo() {
+            if (!activePeerId) return;
+            
+            const trustRecord = identityManager.getPeer(activePeerId);
+            if (!trustRecord) return;
+            
+            const peerInfoPanel = document.getElementById('peerInfoPanel');
+            const peerName = document.getElementById('peerName');
+            const peerKeyId = document.getElementById('peerKeyId');
+            const peerFingerprint = document.getElementById('peerFingerprint');
+            const trustLevelSelect = document.getElementById('trustLevelSelect');
+            
+            peerName.textContent = trustRecord.profile.name || 'Unknown';
+            peerKeyId.textContent = trustRecord.keyId;
+            peerFingerprint.textContent = trustRecord.fingerprint;
+            trustLevelSelect.value = trustRecord.trustLevel;
+            
+            peerInfoPanel.style.display = 'block';
+        }
+
+        /**
+         * Update peer roster display
+         */
+        function updatePeerRoster() {
+            const rosterList = document.getElementById('peerRosterList');
+            const connectedPeerIds = new Set();
+            
+            // Get all connected peer IDs (direct connections)
+            for (const [cid, conn] of connections.entries()) {
+                if (conn.peerId && conn.dc && conn.dc.readyState === 'open') {
+                    connectedPeerIds.add(conn.peerId);
+                }
+            }
+            
+            // Get all known peers from identity manager
+            const allPeers = identityManager.getAllPeers();
+            
+            if (allPeers.length === 0 && connectedPeerIds.size === 0) {
+                rosterList.innerHTML = '<div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">No peers connected</div>';
+                return;
+            }
+            
+            // Build roster HTML - show all known peers
+            let html = '';
+            for (const record of allPeers) {
+                const pid = record.peerId;
+                const name = record.profile?.name || pid.substring(0, 8);
+                const trustLevel = record.trustLevel || 'unknown';
+                const isSelected = pid === activePeerId;
+                const isConnected = connectedPeerIds.has(pid);
+                
+                const trustBadges = {
+                    'unknown': '<span class="trust-badge trust-unknown">❓</span>',
+                    'untrusted': '<span class="trust-badge trust-unknown">⛔</span>',
+                    'marginal': '<span class="trust-badge trust-marginal">⚠️</span>',
+                    'full': '<span class="trust-badge trust-full">✅</span>',
+                    'ultimate': '<span class="trust-badge trust-ultimate">⭐</span>'
+                };
+                
+                const statusIndicator = isConnected ? '🟢 Connected' : '⚪ Known (via host)';
+                
+                html += `
+                    <div class="peer-item ${isSelected ? 'selected' : ''}" onclick="selectPeer('${pid}')">
+                        <div class="peer-name">${name}${trustBadges[trustLevel] || ''}</div>
+                        <div class="peer-status">${statusIndicator}</div>
+                    </div>
+                `;
+            }
+            
+            rosterList.innerHTML = html;
+        }
+
+        /**
+         * Select a peer from the roster
+         */
+        function selectPeer(peerId) {
+            activePeerId = peerId;
+            remotePeerId = peerId; // Update legacy variable for compatibility
+            updatePeerRoster();
+            displayPeerInfo();
+        }
+
+        /**
+         * Update trust level for active peer
+         */
+        async function updateTrustLevel() {
+            if (!activePeerId) return;
+            
+            const trustLevelSelect = document.getElementById('trustLevelSelect');
+            const newLevel = trustLevelSelect.value;
+            
+            await identityManager.setTrust(activePeerId, newLevel, 'manual');
+            
+            const trustEmoji = {
+                'unknown': '❓',
+                'untrusted': '⛔',
+                'marginal': '⚠️',
+                'full': '✅'
+            };
+            
+            addSystemMessage(`Trust level updated to ${trustEmoji[newLevel]} ${newLevel}`);
+            updatePeerRoster(); // Refresh to show new trust badge
+            console.log('Trust level set to:', newLevel);
+        }
+
+        /**
+         * Show fingerprint comparison dialog
+         */
+        function showFingerprintComparison() {
+            if (!activePeerId) return;
+            
+            const trustRecord = identityManager.getPeer(activePeerId);
+            if (!trustRecord) return;
+            
+            const myFingerprint = ownIdentity.fingerprint;
+            const peerFingerprint = trustRecord.fingerprint;
+            const peerName = trustRecord.profile.name || 'Unknown';
+            
+            // Populate modal
+            document.getElementById('myFingerprintDisplay').textContent = myFingerprint;
+            document.getElementById('peerFingerprintDisplay').textContent = peerFingerprint;
+            document.getElementById('peerNameDisplay').textContent = peerName;
+            document.getElementById('peerNameDisplay2').textContent = peerName;
+            document.getElementById('trustLevelModal').value = trustRecord.trustLevel;
+            
+            // Show modal
+            const modal = document.getElementById('fingerprintModal');
+            modal.style.display = 'flex';
+        }
+
+        /**
+         * Close fingerprint verification modal
+         */
+        function closeFingerprintModal() {
+            const modal = document.getElementById('fingerprintModal');
+            modal.style.display = 'none';
+        }
+
+        /**
+         * Save trust level from modal
+         */
+        async function saveTrustLevel() {
+            if (!activePeerId) return;
+            
+            const trustLevelModal = document.getElementById('trustLevelModal');
+            const newLevel = trustLevelModal.value;
+            
+            // Update trust level
+            await identityManager.setTrust(activePeerId, newLevel, 'manual');
+            
+            // Update the dropdown in the peer info panel
+            const trustLevelSelect = document.getElementById('trustLevelSelect');
+            if (trustLevelSelect) {
+                trustLevelSelect.value = newLevel;
+            }
+            
+            // Close modal
+            closeFingerprintModal();
+            
+            // Show confirmation
+            const trustEmoji = {
+                'unknown': '❓',
+                'untrusted': '⛔',
+                'marginal': '⚠️',
+                'full': '✅'
+            };
+            
+            addSystemMessage(`Trust level updated to ${trustEmoji[newLevel]} ${newLevel}`);
+            updatePeerRoster(); // Refresh roster to show new badge
+            console.log('Trust level set to:', newLevel);
+        }
+
+        /**
          * Send hello message to introduce ourselves
          */
-        async function sendHello() {
+        async function sendHello(targetChannel = null) {
             const peerInfo = ownIdentity.getPublicInfo();
             
             const message = LP2P.MessageFactory.createHello(peerId, peerInfo);
@@ -772,7 +1693,7 @@
             // Sign the message
             await signMessage(message);
             
-            sendRawMessage(message);
+            sendRawMessage(message, targetChannel);
         }
 
         /**
@@ -788,7 +1709,7 @@
         /**
          * Add a message to the chat
          */
-        function addMessage(text, isSent, messageId = null) {
+        function addMessage(text, isSent, messageId = null, senderId = null) {
             // Clear placeholder if exists
             if (messagesDiv.children.length === 1 && messagesDiv.children[0].style.textAlign === 'center') {
                 messagesDiv.innerHTML = '';
@@ -798,6 +1719,20 @@
             messageDiv.className = 'message ' + (isSent ? 'sent' : 'received');
             if (messageId) {
                 messageDiv.dataset.messageId = messageId;
+            }
+            
+            // Add sender name for received messages
+            if (!isSent && senderId) {
+                const peer = identityManager.getPeer(senderId);
+                const senderName = peer?.profile?.name || senderId.substring(0, 8);
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'message-sender';
+                senderDiv.style.fontSize = '12px';
+                senderDiv.style.fontWeight = 'bold';
+                senderDiv.style.marginBottom = '4px';
+                senderDiv.style.opacity = '0.8';
+                senderDiv.textContent = senderName;
+                messageDiv.appendChild(senderDiv);
             }
             
             const textDiv = document.createElement('div');
@@ -882,25 +1817,76 @@
                     displayText = `${icon} ${displayText}`;
                 }
                 
-                addMessage(displayText, false, message.id);
+                addMessage(displayText, false, message.id, message.from);
             });
             
             // Handle system messages
             messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.HELLO, async (message) => {
                 console.log('Peer introduced:', message.payload.peerInfo);
                 remotePeerId = message.from;
+                // Map to a connection without peerId yet
+                for (const [cid, conn] of connections.entries()) {
+                    if (!conn.peerId && conn.dc && conn.dc.readyState === 'open') {
+                        conn.peerId = message.from;
+                        console.log('Associated connection', cid, 'with peer', conn.peerId);
+                        break;
+                    }
+                }
                 
                 const peerInfo = message.payload.peerInfo;
                 const peerName = peerInfo.profile?.name || peerInfo.name || message.from;
                 
                 // Add peer to known peers if we have their public key
                 if (peerInfo.publicKey) {
+                    // Determine if this is a brand new peer (not previously known)
+                    const existingRecord = identityManager.getPeer(peerInfo.id);
                     const trustRecord = await identityManager.addPeer(peerInfo);
                     
-                    // Set initial trust level to unknown
-                    await identityManager.setTrust(peerInfo.id, 'unknown');
+                    // Only set to unknown if this is a brand new peer; preserve existing trust if known
+                    if (!existingRecord) {
+                        // New peer: initialize trust level (already UNKNOWN by default, but we persist timestamp)
+                        await identityManager.setTrust(peerInfo.id, 'unknown');
+                    } else {
+                        console.log('Peer already known, preserving trust level:', existingRecord.trustLevel);
+                    }
                     
                     console.log('Added peer with fingerprint:', trustRecord.fingerprint);
+                    
+                    // Display peer info panel
+                    displayPeerInfo();
+
+                    // Get connection for this peer
+                    const newcomerConn = getConnectionByPeerId(peerInfo.id);
+                    
+                    // Host introduces itself to the newcomer
+                    if (newcomerConn && newcomerConn.dc && newcomerConn.dc.readyState === 'open') {
+                        const hostInfo = ownIdentity.getPublicInfo();
+                        const introSelf = LP2P.MessageFactory.createIntroduce(peerId, peerInfo.id, hostInfo);
+                        newcomerConn.dc.send(introSelf.serialize());
+                        console.log('Host introduced itself to newcomer');
+                    }
+
+                    // Host-mediated introductions: inform existing peers & newcomer about each other
+                    if (connections.size > 1) {
+                        const newPeerInfo = peerInfo;
+                        // Send newcomer info to others
+                        for (const [cid, conn] of connections.entries()) {
+                            if (conn.peerId && conn.peerId !== newPeerInfo.id && conn.dc && conn.dc.readyState === 'open') {
+                                const introMsg = LP2P.MessageFactory.createIntroduce(peerId, conn.peerId, newPeerInfo);
+                                conn.dc.send(introMsg.serialize());
+                            }
+                        }
+                        // Send existing peers info to newcomer
+                        if (newcomerConn && newcomerConn.dc && newcomerConn.dc.readyState === 'open') {
+                            for (const record of identityManager.getAllPeers()) {
+                                if (record.peerId !== newPeerInfo.id) {
+                                    const existingInfo = buildPeerInfo(record);
+                                    const introBack = LP2P.MessageFactory.createIntroduce(peerId, newPeerInfo.id, existingInfo);
+                                    newcomerConn.dc.send(introBack.serialize());
+                                }
+                            }
+                        }
+                    }
                     
                     // Show signature verification status
                     if (message.signatureValid) {
@@ -913,6 +1899,34 @@
                 }
                 
                 updateStatus('connected', `Connected to ${peerName}`);
+                updatePeerRoster(); // Update roster when peer connects
+            });
+
+            // Handle introduction messages (host-mediated peer discovery)
+            messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.INTRODUCE, async (message) => {
+                const info = message.payload.peerInfo;
+                if (!info || !info.id) return;
+                
+                console.log('Received INTRODUCE for peer:', info.id, 'with profile:', info.profile);
+                
+                // Associate connection with this peer if not already done
+                for (const [cid, conn] of connections.entries()) {
+                    if (!conn.peerId && conn.dc && conn.dc.readyState === 'open') {
+                        conn.peerId = info.id;
+                        console.log('Associated connection', cid, 'with introduced peer', info.id);
+                        break;
+                    }
+                }
+                
+                const existing = identityManager.getPeer(info.id);
+                if (!existing) {
+                    const trustRecord = await identityManager.addPeer(info);
+                    console.log('Added peer from INTRODUCE:', trustRecord);
+                    addSystemMessage(`👥 Introduced to peer ${info.profile?.name || info.id}`);
+                } else {
+                    console.log('Peer already known from INTRODUCE:', info.id);
+                }
+                updatePeerRoster(); // Update roster when peer introduced
             });
             
             messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.GOODBYE, (message) => {
@@ -920,6 +1934,15 @@
                 
                 const reason = message.payload.reason || 'disconnected';
                 addSystemMessage(`Peer ${reason}`);
+                
+                // Hide peer info panel if it was for this peer
+                if (activePeerId === message.from) {
+                    const peerInfoPanel = document.getElementById('peerInfoPanel');
+                    if (peerInfoPanel) peerInfoPanel.style.display = 'none';
+                    activePeerId = null;
+                }
+                
+                updatePeerRoster(); // Update roster when peer disconnects
             });
             
             messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.PING, (message) => {
@@ -951,15 +1974,15 @@
          */
         async function init() {
             // Check if this is first time (no identity in localStorage)
-            const isFirstTime = !localStorage.getItem('lp2p_identity');
+            const isFirstTime = !localStorage.getItem('lp2p.identity');
             
             if (isFirstTime) {
-                // Show username modal
+                // Show username modal for first-time setup
                 showUsernameModal();
                 return; // Wait for user to set username
             }
             
-            // Initialize identity manager
+            // Load existing identity
             identityManager = new LP2PIdentity.IdentityManager();
             await identityManager.initialize();
             ownIdentity = identityManager.getOwnIdentity();
