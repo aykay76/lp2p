@@ -48,6 +48,16 @@ function copyRoomCode() {
     }
 }
 
+/**
+ * Generate QR code as data URL for displaying offers/answers
+ */
+function generateQRCode(data, size = 256) {
+    // Use a public QR API for simplicity (no dependencies)
+    // For production, consider embedding qrcode.js library
+    const encoded = encodeURIComponent(data);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}`;
+}
+
 
 /**
  * Show QR code for room
@@ -331,6 +341,86 @@ function addSystemMessage(text) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+/**
+ * Enable chat UI
+ */
+function enableChat() {
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.focus();
+}
+
+/**
+ * Disable chat UI
+ */
+function disableChat() {
+    messageInput.disabled = true;
+    sendBtn.disabled = true;
+}
+
+/**
+ * Show username setup modal
+ */
+function showUsernameModal() {
+    const modal = document.getElementById('usernameModal');
+    modal.style.display = 'flex';
+    
+    const input = document.getElementById('usernameInput');
+    input.focus();
+    
+    // Allow Enter key to submit
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            setUsername();
+        }
+    });
+}
+
+/**
+ * Set username and create identity
+ */
+async function setUsername() {
+    const input = document.getElementById('usernameInput');
+    const username = input.value.trim();
+    
+    if (!username) {
+        alert('Please enter a name');
+        return;
+    }
+    
+    // Hide modal
+    const modal = document.getElementById('usernameModal');
+    modal.style.display = 'none';
+    
+    // Create identity with chosen name
+    identityManager = new LP2PIdentity.IdentityManager();
+    await identityManager.initialize({ name: username });
+    ownIdentity = identityManager.getOwnIdentity();
+    
+    // Use identity's ID as our peer ID
+    peerId = ownIdentity.id;
+    console.log('Our peer ID:', peerId);
+    console.log('Our fingerprint:', ownIdentity.fingerprint);
+    
+    // Display identity in UI
+    displayIdentity();
+    
+    // Initialize message handlers
+    initMessageHandlers();
+    
+    console.log('Local P2P Messenger initialized with protocol v' + LP2P.PROTOCOL.VERSION);
+    updateStatus('', 'Disconnected');
+}
+
+/**
+ * Handle Enter key in message input
+ */
+messageInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+});
+
 // Export for use in main app
 if (typeof window !== 'undefined') {
     window.LP2PSignaling = {
@@ -338,6 +428,7 @@ if (typeof window !== 'undefined') {
         updateStatus,
         showJoinRoomDialog,
         copyRoomCode,
+        generateQRCode,
         showQRCode,
         displayIdentity,
         changeName,
@@ -348,6 +439,10 @@ if (typeof window !== 'undefined') {
         closeFingerprintModal,
         saveTrustLevel,
         addMessage,
-        addSystemMessage
+        addSystemMessage,
+        enableChat,
+        disableChat,
+        showUsernameModal,
+        setUsername
     };
 }

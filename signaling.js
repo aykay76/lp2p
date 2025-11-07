@@ -4,20 +4,6 @@
  */
 
 // ============================================================================
-// QR Code Generator (minimal inline implementation)
-// ============================================================================
-
-/**
- * Generate QR code as data URL for displaying offers/answers
- */
-function generateQRCode(data, size = 256) {
-    // Use a public QR API for simplicity (no dependencies)
-    // For production, consider embedding qrcode.js library
-    const encoded = encodeURIComponent(data);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}`;
-}
-
-// ============================================================================
 // PeerJS Cloud Signaling (cross-browser/device)
 // ============================================================================
 
