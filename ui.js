@@ -74,6 +74,102 @@ function showQRCode() {
 }
 
 /**
+ * Rooms / Channels UI
+ */
+async function initRoomsUI() {
+    if (!window.LP2PRoomStore) return;
+    const list = document.getElementById('channelsList');
+    if (!list) return;
+    const rooms = await window.LP2PRoomStore.getAllRooms();
+    renderRoomsList(rooms);
+}
+
+function renderRoomsList(rooms) {
+    const list = document.getElementById('channelsList');
+    if (!list) return;
+    if (!rooms || rooms.length === 0) {
+        list.innerHTML = '<div class="no-rooms">No channels yet</div>';
+        return;
+    }
+
+    // Sort by lastActive desc
+    rooms.sort((a,b) => (b.lastActive || 0) - (a.lastActive || 0));
+
+    let html = '';
+    for (const r of rooms) {
+        const name = r.name || r.code;
+        const last = r.lastActive ? new Date(r.lastActive).toLocaleString() : '-';
+        html += `
+            <div class="channel-item">
+                <div class="channel-main">
+                    <strong>${name}</strong> <span class="code">${r.code}</span>
+                </div>
+                <div class="channel-meta">Last active: ${last}</div>
+                <div class="channel-actions">
+                    <button onclick="joinRoom('${r.code}')">Join</button>
+                    <button onclick="(async()=>{await navigator.clipboard.writeText('${r.code}'); alert('Code copied')})()">Copy</button>
+                    <button onclick="(async()=>{await LP2PRoomStore.deleteRoom('${r.code}'); initRoomsUI();})()">Delete</button>
+                </div>
+            </div>
+        `;
+    }
+    list.innerHTML = html;
+}
+
+function createRoomDialog() {
+    const name = prompt('Enter channel name:');
+    if (!name || !name.trim()) return alert('Channel name required');
+    const isDM = confirm('Make this a DM (max 2 participants)?\nPress OK for DM, Cancel for regular channel');
+    createRoom({ name: name.trim(), capacity: isDM ? 2 : 0 });
+}
+
+async function createRoom({ name, capacity = 0 }){
+    // generate code
+    let code = null;
+    if (window.LP2PSignaling && window.LP2PSignaling.PeerJSSignaling && typeof window.LP2PSignaling.PeerJSSignaling.generateRoomCode === 'function'){
+        code = window.LP2PSignaling.PeerJSSignaling.generateRoomCode();
+    } else {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        code = Array.from({length:6}).map(()=>chars.charAt(Math.floor(Math.random()*chars.length))).join('');
+    }
+
+    const room = {
+        code,
+        name,
+        creator: (peerId || (ownIdentity && ownIdentity.id)) || 'anonymous',
+        createdAt: Date.now(),
+        lastActive: Date.now(),
+        capacity: capacity || 0,
+        privacy: 'invite',
+        autoRejoin: true,
+        metadata: {},
+        version: 1,
+        flags: { dm: capacity === 2 }
+    };
+
+    try {
+        await LP2PRoomStore.putRoom(room);
+        addSystemMessage(`Room ${name} (${code}) created locally`);
+        // Announce via signaling if available
+        if (window.signaling && typeof window.signaling.announceRooms === 'function'){
+            window.signaling.announceRooms([{
+                code: room.code,
+                name: room.name,
+                lastActive: room.lastActive,
+                capacity: room.capacity,
+                creator: room.creator
+            }]);
+        }
+        // refresh UI
+        initRoomsUI();
+    } catch (err) {
+        console.error('Failed create room', err);
+        alert('Failed to create room: ' + err.message);
+    }
+}
+
+
+/**
  * Display our identity information
  */
 function displayIdentity() {
@@ -443,6 +539,11 @@ if (typeof window !== 'undefined') {
         enableChat,
         disableChat,
         showUsernameModal,
-        setUsername
+        setUsername,
+        // Rooms UI
+        initRoomsUI,
+        renderRoomsList,
+        createRoomDialog,
+        createRoom
     };
 }

@@ -194,6 +194,7 @@ class WebSocketSignaling {
         this.onAnswer = null;
         this.onPeerJoined = null;
         this.onPeerLeft = null;
+        this.onRoomMembers = null; // callback(room, members[])
     }
 
     /**
@@ -265,6 +266,11 @@ class WebSocketSignaling {
                     this.onPeerLeft(data.peerId);
                 }
                 break;
+            case 'roomMembers':
+                if (this.onRoomMembers) {
+                    this.onRoomMembers(data.room, data.members || []);
+                }
+                break;
         }
     }
 
@@ -279,6 +285,24 @@ class WebSocketSignaling {
             to: targetPeerId,
             sdp: offer
         });
+    }
+
+    /**
+     * Announce a list of rooms (ephemeral presence) to the signaling server
+     * rooms: [{ code, name?, lastActive?, capacity?, creator? }]
+     */
+    announceRooms(rooms) {
+        this.send({
+            type: 'announceRooms',
+            rooms: rooms
+        });
+    }
+
+    /**
+     * Query the signaling server for currently-online members of a room
+     */
+    queryRoomMembers(roomCode) {
+        this.send({ type: 'queryRoomMembers', room: roomCode });
     }
 
     /**

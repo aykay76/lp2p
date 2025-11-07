@@ -598,6 +598,8 @@
                 console.log('Creating room', currentRoomCode, 'with peerId', peerId);
                 
                 roomSignaling = new LP2PSignaling.PeerJSSignaling();
+                // expose current signaling instance for UI helpers
+                window.signaling = roomSignaling;
                 await roomSignaling.joinRoom(currentRoomCode, 'host'); // Host always uses 'host' as peerId
                 
                 // Host receives offers from joining peers
@@ -636,6 +638,8 @@
                 console.log('PEER: Joining room', currentRoomCode, 'with peerId', peerId);
                 
                 roomSignaling = new LP2PSignaling.PeerJSSignaling();
+                // expose current signaling instance for UI helpers
+                window.signaling = roomSignaling;
                 await roomSignaling.joinRoom(currentRoomCode, peerId);
                 
                 // Client receives offers from host
@@ -1168,6 +1172,9 @@
             
             // Initialize message handlers
             initMessageHandlers();
+
+            // Initialize rooms UI from local store
+            try { if (typeof initRoomsUI === 'function') await initRoomsUI(); } catch(e) { console.warn('initRoomsUI failed', e); }
             
             console.log('Local P2P Messenger initialized with protocol v' + LP2P.PROTOCOL.VERSION);
             updateStatus('', 'Disconnected');

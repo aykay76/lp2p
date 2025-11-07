@@ -39,7 +39,8 @@ const SYSTEM_ACTIONS = {
     LIST_PEERS: 'listPeers',
     PEER_LIST: 'peerList',
     ERROR: 'error',
-    INTRODUCE: 'introduce' // Introduce a peer to another peer (host-mediated)
+    INTRODUCE: 'introduce', // Introduce a peer to another peer (host-mediated)
+    ROOM_ANNOUNCE: 'roomAnnounce' // Announce a room's minimal metadata to peers
 };
 
 const CONTROL_ACTIONS = {
@@ -486,6 +487,16 @@ class MessageFactory {
     }
 
     /**
+     * Create a room announce message (share minimal room metadata)
+     */
+    static createRoomAnnounce(from, room) {
+        return new Message(MESSAGE_TYPES.SYSTEM, from, '*', {
+            action: SYSTEM_ACTIONS.ROOM_ANNOUNCE,
+            room
+        });
+    }
+
+    /**
      * Create an introduction message (host tells one peer about another)
      */
     static createIntroduce(from, to, peerInfo) {
@@ -762,6 +773,47 @@ function initMessageHandlers() {
         }
         updatePeerRoster(); // Update roster when peer introduced
     });
+
+        // Handle room announcements from peers (learn about channels)
+        messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.ROOM_ANNOUNCE, async (message) => {
+            try {
+                const room = message.payload.room;
+                if (!room || !room.code) return;
+
+                if (typeof window !== 'undefined' && window.LP2PRoomStore) {
+                    const existing = await window.LP2PRoomStore.getRoom(room.code);
+                    let shouldPut = false;
+                    if (!existing) {
+                        shouldPut = true;
+                    } else {
+                        const incomingVer = room.version || 0;
+                        const existingVer = existing.version || 0;
+                        if (incomingVer > existingVer) shouldPut = true;
+                        else if (incomingVer === existingVer && (room.lastActive || 0) > (existing.lastActive || 0)) shouldPut = true;
+                    }
+
+                    if (shouldPut) {
+                        const rec = Object.assign({
+                            code: room.code,
+                            name: room.name || room.code,
+                            creator: room.creator || message.from,
+                            createdAt: room.createdAt || Date.now(),
+                            lastActive: room.lastActive || Date.now(),
+                            capacity: room.capacity || 0,
+                            privacy: room.privacy || 'invite',
+                            version: room.version || 1,
+                            metadata: room.metadata || {}
+                        }, room);
+
+                        await window.LP2PRoomStore.putRoom(rec);
+                        try { addSystemMessage(`📣 Learned about room ${rec.name} (${rec.code})`); } catch(e){}
+                        if (typeof initRoomsUI === 'function') initRoomsUI();
+                    }
+                }
+            } catch (err) {
+                console.warn('Failed handling ROOM_ANNOUNCE:', err);
+            }
+        });
     
     messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.GOODBYE, (message) => {
         console.log('Peer disconnecting:', message.from);
