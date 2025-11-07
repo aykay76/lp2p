@@ -28,43 +28,43 @@
 
         <!-- Username Setup Modal (shown on first load) -->
         <div id="usernameModal" class="username-modal">
-            <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                <h2 style="margin-top: 0; color: #667eea;">👋 Welcome to LP2P!</h2>
-                <p style="color: #666; margin-bottom: 20px;">Choose a display name for your identity. This will be shown to peers you connect with.</p>
-                <input type="text" id="usernameInput" placeholder="Enter your name..." style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; margin-bottom: 20px; box-sizing: border-box;" />
-                <button onclick="setUsername()" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Continue</button>
+            <div class="modal-card">
+                <h2 class="modal-title">👋 Welcome to LP2P!</h2>
+                <p class="modal-desc">Choose a display name for your identity. This will be shown to peers you connect with.</p>
+                <input type="text" id="usernameInput" placeholder="Enter your name..." class="input-full" />
+                <button onclick="setUsername()" class="btn-block btn-primary">Continue</button>
             </div>
         </div>
 
         <!-- Fingerprint Verification Modal -->
-        <div id="fingerprintModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
-            <div style="background: white; padding: 35px; border-radius: 12px; max-width: 650px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
-                <div style="text-align: center; margin-bottom: 25px;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">🔐</div>
-                    <h2 style="margin: 0 0 10px 0; color: #667eea; font-size: 24px;">Fingerprint Verification</h2>
-                    <p style="color: #666; margin: 0; font-size: 14px;">Compare fingerprints to verify identity</p>
+        <div id="fingerprintModal" class="modal-overlay">
+            <div class="modal-card large">
+                <div class="center">
+                    <div class="icon-large">🔐</div>
+                    <h2 class="fingerprint-title">Fingerprint Verification</h2>
+                    <p class="fingerprint-paragraph">Compare fingerprints to verify identity</p>
                 </div>
 
                 <!-- Your Fingerprint -->
-                <div style="background: #e8f5e9; border: 3px solid #4caf50; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                    <div style="font-weight: 600; color: #2e7d32; margin-bottom: 12px; font-size: 16px;">
+                <div class="fingerprint-card fingerprint-your">
+                    <div class="fingerprint-title-strong">
                         ✓ Your Fingerprint
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; word-break: break-all; color: #1b5e20;" id="myFingerprintDisplay"></div>
+                    <div id="myFingerprintDisplay" class="fingerprint-mono"></div>
                 </div>
 
                 <!-- Peer's Fingerprint -->
-                <div style="background: #fff3e0; border: 3px solid #ff9800; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                    <div style="font-weight: 600; color: #e65100; margin-bottom: 12px; font-size: 16px;">
+                <div class="fingerprint-card fingerprint-peer">
+                    <div class="fingerprint-title-strong">
                         ⚠️ <span id="peerNameDisplay"></span>'s Fingerprint
                     </div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.8; word-break: break-all; color: #e65100;" id="peerFingerprintDisplay"></div>
+                    <div id="peerFingerprintDisplay" class="fingerprint-mono"></div>
                 </div>
 
                 <!-- Verification Instructions -->
-                <div style="background: #f5f5f5; border-left: 4px solid #667eea; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px;">
-                    <div style="font-weight: 600; margin-bottom: 10px; color: #667eea;">📋 Verification Steps:</div>
-                    <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 13px; line-height: 1.6;">
+                <div class="verification-steps">
+                    <div class="verification-header">📋 Verification Steps:</div>
+                    <ol class="verification-ol">
                         <li>Contact <strong id="peerNameDisplay2"></strong> through a trusted channel (phone, video, in person)</li>
                         <li>Ask them to read their fingerprint aloud</li>
                         <li>Compare it character-by-character with the orange fingerprint above</li>
@@ -74,11 +74,11 @@
                 </div>
 
                 <!-- Trust Level Selector -->
-                <div style="background: #fafafa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #333; font-size: 14px;">
+                <div class="trust-card">
+                    <label class="label-block">
                         Set Trust Level:
                     </label>
-                    <select id="trustLevelModal" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">
+                    <select id="trustLevelModal" class="select-full">
                         <option value="unknown">❓ Unknown - Not yet verified</option>
                         <option value="untrusted">⛔ Untrusted - Do NOT trust</option>
                         <option value="marginal">⚠️ Marginal Trust - Partially verified</option>
@@ -87,49 +87,49 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="closeFingerprintModal()" style="flex: 1; padding: 12px; background: #e0e0e0; color: #666; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Cancel</button>
-                    <button onclick="saveTrustLevel()" style="flex: 1; padding: 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Save Trust Level</button>
+                <div class="flex-row">
+                    <button onclick="closeFingerprintModal()" class="flex-1 btn-block btn-secondary">Cancel</button>
+                    <button onclick="saveTrustLevel()" class="flex-1 btn-block btn-primary">Save Trust Level</button>
                 </div>
             </div>
         </div>
 
         <div class="main-content">
             <!-- Easy Connection Panel -->
-            <div class="panel" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea;">
+            <div class="panel panel-hero">
                 <h2>🚀 Quick Connect</h2>
                 
-                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                    <button class="btn-primary" style="flex: 1;" onclick="createRoom()">🏠 Create Room</button>
-                    <button class="btn-primary" style="flex: 1;" onclick="showJoinRoomDialog()">🔗 Join Room</button>
+                <div class="flex-row mb-16">
+                    <button class="btn-primary flex-1" onclick="createRoom()">🏠 Create Room</button>
+                    <button class="btn-primary flex-1" onclick="showJoinRoomDialog()">🔗 Join Room</button>
                 </div>
 
-                <div id="roomDisplay" style="display: none; padding: 16px; background: white; border-radius: 8px; margin-bottom: 12px; text-align: center;">
-                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">Room Code</div>
-                    <div id="roomCodeDisplay" style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #667eea; font-family: monospace; margin-bottom: 12px;">------</div>
-                    <div style="font-size: 12px; color: #888; margin-bottom: 12px;">Share this code with others to let them join</div>
-                    <div id="qrCodeContainer" style="display: flex; justify-content: center; margin: 12px 0;">
-                        <img id="qrCodeImage" style="max-width: 200px; border: 2px solid #ddd; border-radius: 8px; display: none;">
+                <div id="roomDisplay" class="room-display">
+                    <div class="small-muted">Room Code</div>
+                    <div id="roomCodeDisplay" class="room-code">------</div>
+                    <div class="small-muted">Share this code with others to let them join</div>
+                    <div id="qrCodeContainer" class="qr-container">
+                        <img id="qrCodeImage" class="qr-image">
                     </div>
-                    <button onclick="copyRoomCode()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-right: 8px;">📋 Copy Code</button>
-                    <button onclick="showQRCode()" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;">📱 Show QR</button>
+                    <button onclick="copyRoomCode()" class="btn-success mr-8">📋 Copy Code</button>
+                    <button onclick="showQRCode()" class="btn-primary">📱 Show QR</button>
                 </div>
 
-                <div style="font-size: 12px; color: #666; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                <div class="muted-box">
                     <strong>💡 Tip:</strong> Room-based connection uses localStorage. Works great for same-device testing or devices on the same network with shared storage.
                 </div>
             </div>
 
             <!-- Manual Signaling (Advanced) - Collapsed by default -->
-            <details class="panel" style="border: 1px solid #ddd;">
-                <summary style="cursor: pointer; padding: 12px; background: #f8f9fa; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            <details class="panel panel-border">
+                <summary class="summary-btn">
                     ⚙️ Manual Signaling (Advanced)
                 </summary>
                 
-                <div style="margin-top: 12px;">
+                <div class="margin-top-12">
                     <!-- Peer A (Offerer) Panel -->
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="font-size: 16px; margin-bottom: 10px;">👤 Peer A (Offerer)</h3>
+                    <div class="section-margin">
+                        <h3 class="h3-style">👤 Peer A (Offerer)</h3>
                         
                         <div class="instructions">
                             <strong>Step 1:</strong> Click "Create Offer" to start
@@ -143,7 +143,7 @@
                         
                         <div class="help-text">📋 Copy this offer and paste it in Peer B on the other browser</div>
 
-                        <h3 style="font-size: 16px; margin: 20px 0 10px;">📥 Paste Answer Here</h3>
+                        <h3 class="h3-style h3-spaced">📥 Paste Answer Here</h3>
                         
                         <textarea id="answerInput" class="signal-area" placeholder="Paste the answer from Peer B here..."></textarea>
                         
@@ -151,8 +151,8 @@
                     </div>
 
                     <!-- Peer B (Answerer) Panel -->
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="font-size: 16px; margin-bottom: 10px;">👤 Peer B (Answerer)</h3>
+                    <div class="section-margin">
+                        <h3 class="h3-style">👤 Peer B (Answerer)</h3>
                         
                         <div class="instructions">
                             <strong>Step 2:</strong> Paste the offer from Peer A
@@ -171,10 +171,10 @@
 
                     <!-- Additional Offers (Multi-Party Host) -->
                     <div id="additionalOffersPanel">
-                        <h3 style="font-size: 16px; margin-bottom: 10px;">🧩 Additional Offers</h3>
-                        <div style="font-size:12px; color:#555; margin-bottom:8px;">Create separate offers for each extra peer you want to join. Each peer creates an answer from its own browser and you apply it here.</div>
-                        <div id="multiOffersContainer" style="display:flex; flex-direction:column; gap:14px;"></div>
-                        <button style="margin-top:8px; background:#4a5568; color:#fff; padding:8px 14px; border:none; border-radius:5px; cursor:pointer; font-size:13px;" onclick="createAdditionalOffer()">➕ New Offer</button>
+                        <h3 class="h3-style">🧩 Additional Offers</h3>
+                        <div class="small-muted">Create separate offers for each extra peer you want to join. Each peer creates an answer from its own browser and you apply it here.</div>
+                        <div id="multiOffersContainer" class="multi-offers"></div>
+                        <button class="btn-secondary mt-8" onclick="createAdditionalOffer()">➕ New Offer</button>
                         <div class="help-text">Use a new offer per joining peer. Answers can't be reused.</div>
                     </div>
                 </div>
@@ -186,7 +186,7 @@
                 <div class="peer-roster">
                     <h3>👥 Connected Peers</h3>
                     <div id="peerRosterList">
-                        <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                        <div class="peer-roster no-peers">
                             No peers connected
                         </div>
                     </div>
@@ -197,33 +197,34 @@
                     <h2>💬 Messages</h2>
                     
                     <!-- Peer Info Panel (shown when peer selected) -->
-                    <div id="peerInfoPanel" style="display: none; background: #f8f9fa; border: 2px solid #667eea; border-radius: 6px; padding: 12px; margin-bottom: 15px; font-size: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div style="flex: 1;">
+                    <div id="peerInfoPanel" class="peer-info-panel">
+                        <div class="peer-info-top">
+                            <div class="flex-1">
                                 <strong>Selected Peer</strong><br>
-                                <div id="peerName" style="font-size: 14px; font-weight: 600; color: #667eea; margin: 5px 0;"></div>
-                                <div style="font-family: monospace; font-size: 10px;">
+                                <div id="peerName" class="peer-name-style"></div>
+                                <div class="small-code">
                                     Key ID: <code id="peerKeyId"></code><br>
-                                    Fingerprint: <code id="peerFingerprint" style="font-size: 9px;"></code>
+                                    Fingerprint: <code id="peerFingerprint" class="small-code"></code>
                                 </div>
                             </div>
-                            <div style="text-align: right;">
-                                <div style="margin-bottom: 8px;">
-                                    <strong style="font-size: 11px;">Trust Level:</strong><br>
-                                    <select id="trustLevelSelect" onchange="updateTrustLevel()" style="padding: 4px; border-radius: 4px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px;">
+                            <div class="text-right">
+                                <div class="mb-8">
+                                    <strong class="trust-strong">Trust Level:</strong><br>
+                                    <select id="trustLevelSelect" onchange="updateTrustLevel()" class="trust-select">
                                         <option value="unknown">❓ Unknown</option>
                                         <option value="untrusted">⛔ Untrusted</option>
                                         <option value="marginal">⚠️ Marginal</option>
                                         <option value="full">✅ Full Trust</option>
-                                </select>
+                                    </select>
+                                </div>
+                                <button onclick="showFingerprintComparison()" class="verify-btn">🔍 Verify Fingerprint</button>
                             </div>
-                            <button onclick="showFingerprintComparison()" style="font-size: 11px; padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">🔍 Verify Fingerprint</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="messages" id="messages">
-                    <div style="text-align: center; color: #999; padding: 40px 20px;">
+                    <div class="center-muted">
                         No connection yet. Complete the signaling process to start chatting.
                     </div>
                 </div>

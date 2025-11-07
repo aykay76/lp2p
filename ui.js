@@ -85,13 +85,13 @@ function displayIdentity() {
     const displayName = ownIdentity.profile.name || 'Anonymous';
     
     identityInfo.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div class="peer-info-top">
             <div>
                 <strong>Your Identity</strong><br>
                 Name: <strong>${displayName}</strong> 
-                <button onclick="changeName()" style="font-size: 10px; padding: 2px 6px; margin-left: 5px; cursor: pointer; background: #667eea; color: white; border: none; border-radius: 3px;">✏️ Edit</button><br>
+                <button onclick="changeName()" class="edit-btn">✏️ Edit</button><br>
                 Key ID: <code>${keyId}</code><br>
-                Fingerprint: <code style="font-size: 10px;">${fingerprint}</code>
+                Fingerprint: <code class="code-small">${fingerprint}</code>
             </div>
         </div>
     `;
@@ -153,7 +153,7 @@ function updatePeerRoster() {
     const allPeers = identityManager.getAllPeers();
     
     if (allPeers.length === 0 && connectedPeerIds.size === 0) {
-        rosterList.innerHTML = '<div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">No peers connected</div>';
+        rosterList.innerHTML = '<div class="no-peers">No peers connected</div>';
         return;
     }
     
@@ -282,7 +282,7 @@ async function saveTrustLevel() {
  */
 function addMessage(text, isSent, messageId = null, senderId = null) {
     // Clear placeholder if exists
-    if (messagesDiv.children.length === 1 && messagesDiv.children[0].style.textAlign === 'center') {
+    if (messagesDiv.children.length === 1 && messagesDiv.children[0].classList && messagesDiv.children[0].classList.contains('center-muted')) {
         messagesDiv.innerHTML = '';
     }
 
@@ -326,7 +326,7 @@ function addMessage(text, isSent, messageId = null, senderId = null) {
  */
 function addSystemMessage(text) {
     // Clear placeholder if exists
-    if (messagesDiv.children.length === 1 && messagesDiv.children[0].style.textAlign === 'center') {
+    if (messagesDiv.children.length === 1 && messagesDiv.children[0].classList && messagesDiv.children[0].classList.contains('center-muted')) {
         messagesDiv.innerHTML = '';
     }
 

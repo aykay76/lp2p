@@ -142,7 +142,7 @@ messageHandler.registerAction(LP2P.MESSAGE_TYPES.SYSTEM, LP2P.SYSTEM_ACTIONS.HEL
 **Added Identity Display:**
 
 ```html
-<div id="identityInfo" style="background: #e8f5e9; border: 1px solid #4caf50; border-radius: 6px; padding: 12px; margin-bottom: 15px; font-size: 12px; font-family: monospace;">
+<div id="identityInfo" class="fingerprint-your peer-info-panel">
     Initializing identity...
 </div>
 ```
@@ -157,8 +157,8 @@ function displayIdentity() {
     identityInfo.innerHTML = `
         <strong>Your Identity</strong><br>
         Name: ${ownIdentity.displayName}<br>
-        Key ID: <code>${keyId}</code><br>
-        Fingerprint: <code style="font-size: 10px;">${fingerprint}</code>
+        Key ID: <code class="code-small">${keyId}</code><br>
+        Fingerprint: <code class="code-small">${fingerprint}</code>
     `;
 }
 ```
