@@ -8,17 +8,78 @@
 // ============================================================================
 
 /**
- * Use PeerJS cloud server for signaling only
- * Keeps existing WebRTC implementation intact
+ * Use PeerJS cloud server for signaling and presence
+ * Handles WebRTC signaling and peer discovery in one service
  */
 class PeerJSSignaling {
-    constructor() {
+    constructor(options = {}) {
         this.roomCode = null;
         this.peerId = null;
         this.onOffer = null;
         this.onAnswer = null;
         this.peer = null;
         this.connections = new Map(); // Track PeerJS connections used only for signaling
+        
+        // Presence tracking (P2P direct pinging)
+        this.presenceEnabled = options.enablePresence !== false; // Default true
+        this.presenceInterval = null;
+        this.presenceMap = new Map(); // peerId -> { lastSeen: timestamp }
+        this.onPresenceUpdate = options.onPresenceUpdate || null;
+        this.onGetKnownPeers = options.onGetKnownPeers || null; // Callback to get list of known peers
+        this.onConnectionStatusChange = options.onConnectionStatusChange || null;
+    }
+
+    async connect(peerId, options = {}) {
+        this.peerId = peerId;
+        
+        // Create PeerJS peer with global presence ID
+        const peerJSId = `lp2p-${peerId}`;
+        this.peer = new Peer(peerJSId, {
+            debug: 0, // Set to 2 for debugging
+            ...options.peerConfig
+        });
+
+        return new Promise((resolve, reject) => {
+            this.peer.on('open', (id) => {
+                console.log(`✅ PeerJS connected: ${id}`);
+                this.setupSignalingHandlers();
+                
+                // Start presence tracking if enabled
+                if (this.presenceEnabled) {
+                    this.startPresenceTracking();
+                }
+                
+                // Notify status change
+                if (this.onConnectionStatusChange) {
+                    this.onConnectionStatusChange('connected');
+                }
+                
+                resolve(id);
+            });
+
+            this.peer.on('error', (err) => {
+                console.error('❌ PeerJS error:', err);
+                if (this.onConnectionStatusChange) {
+                    this.onConnectionStatusChange('error', err);
+                }
+                reject(err);
+            });
+            
+            this.peer.on('disconnected', () => {
+                console.warn('⚠️ PeerJS disconnected');
+                if (this.onConnectionStatusChange) {
+                    this.onConnectionStatusChange('disconnected');
+                }
+            });
+            
+            this.peer.on('close', () => {
+                console.log('🔴 PeerJS closed');
+                this.stopPresenceTracking();
+                if (this.onConnectionStatusChange) {
+                    this.onConnectionStatusChange('closed');
+                }
+            });
+        });
     }
 
     async joinRoom(roomCode, peerId) {
@@ -28,7 +89,7 @@ class PeerJSSignaling {
         // Create PeerJS peer with custom ID
         const peerJSId = `${roomCode}-${peerId}`;
         this.peer = new Peer(peerJSId, {
-            debug: 2 // Set to 0 in production
+            debug: 0 // Set to 2 for debugging
         });
 
         return new Promise((resolve, reject) => {
@@ -48,6 +109,16 @@ class PeerJSSignaling {
     setupSignalingHandlers() {
         // Listen for incoming signaling connections
         this.peer.on('connection', (conn) => {
+            // Check if this is a presence ping
+            if (conn.metadata && conn.metadata.type === 'presence-ping') {
+                console.log('👋 Presence ping from:', conn.peer);
+                // Just accept the connection - it will be closed by the pinger
+                conn.on('open', () => {
+                    // Connection opened successfully - that's all we need for presence
+                });
+                return;
+            }
+            
             console.log('🔵 PeerJS incoming signaling connection from:', conn.peer);
             
             conn.on('open', () => {
@@ -158,6 +229,149 @@ class PeerJSSignaling {
 
         conn.send(data);
         console.log('✉️ Sent signaling data via PeerJS:', data.type, 'to', peerJSId);
+    }
+
+    startPresenceTracking() {
+        if (!this.presenceEnabled || this.presenceInterval) return;
+        
+        console.log('🔎 Starting P2P presence tracking (direct peer pings)');
+        
+        // Do initial presence check immediately
+        this.checkPeerPresence();
+        
+        // Then check every 30 seconds
+        this.presenceInterval = setInterval(() => {
+            this.checkPeerPresence();
+        }, 30000);
+    }
+    
+    /**
+     * Check presence by attempting lightweight PeerJS connections to known peers
+     * This is truly P2P - no server listing required!
+     */
+    async checkPeerPresence() {
+        // Get list of known peers from callback
+        if (!this.onGetKnownPeers) {
+            console.warn('No onGetKnownPeers callback set - cannot check presence');
+            return;
+        }
+        
+        const knownPeers = this.onGetKnownPeers();
+        if (!knownPeers || knownPeers.length === 0) {
+            return;
+        }
+        
+        console.log(`🔍 Checking presence for ${knownPeers.length} known peers...`);
+        
+        const now = Date.now();
+        const checkPromises = knownPeers.map(peerId => this.pingPeer(peerId, now));
+        
+        // Wait for all pings to complete (with timeout)
+        await Promise.allSettled(checkPromises);
+        
+        // Notify listeners of presence updates
+        if (this.onPresenceUpdate) {
+            this.onPresenceUpdate(Array.from(this.presenceMap.keys()));
+        }
+    }
+    
+    /**
+     * Ping a specific peer to check if they're online
+     * Uses a lightweight PeerJS connection that gets closed immediately
+     */
+    async pingPeer(peerId, timestamp) {
+        if (peerId === this.peerId) return; // Don't ping ourselves
+        
+        const peerJSId = `lp2p-${peerId}`;
+        
+        // Check if we already have an active connection
+        if (this.connections.has(peerJSId)) {
+            const conn = this.connections.get(peerJSId);
+            if (conn.open) {
+                // Already connected - mark as online
+                this.presenceMap.set(peerId, { lastSeen: timestamp });
+                return;
+            }
+        }
+        
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                // Timeout - peer is offline
+                this.presenceMap.delete(peerId);
+                if (pingConn) {
+                    pingConn.close();
+                }
+                resolve();
+            }, 5000); // 5 second timeout
+            
+            let pingConn;
+            try {
+                // Create a lightweight ping connection
+                pingConn = this.peer.connect(peerJSId, {
+                    reliable: false, // Use unreliable for faster connection
+                    metadata: { type: 'presence-ping' }
+                });
+                
+                pingConn.on('open', () => {
+                    clearTimeout(timeout);
+                    // Peer is online!
+                    this.presenceMap.set(peerId, { lastSeen: timestamp });
+                    console.log(`✅ ${peerId.substring(0, 12)} is online`);
+                    // Close the ping connection immediately
+                    pingConn.close();
+                    resolve();
+                });
+                
+                pingConn.on('error', (err) => {
+                    clearTimeout(timeout);
+                    // Error connecting - peer likely offline
+                    this.presenceMap.delete(peerId);
+                    resolve();
+                });
+                
+                pingConn.on('close', () => {
+                    resolve();
+                });
+            } catch (err) {
+                clearTimeout(timeout);
+                this.presenceMap.delete(peerId);
+                resolve();
+            }
+        });
+    }
+    
+    stopPresenceTracking() {
+        if (this.presenceInterval) {
+            clearInterval(this.presenceInterval);
+            this.presenceInterval = null;
+        }
+        this.presenceMap.clear();
+    }
+    
+    getOnlinePeers() {
+        return Array.from(this.presenceMap.keys());
+    }
+    
+    isPeerOnline(peerId) {
+        return this.presenceMap.has(peerId);
+    }
+    
+    /**
+     * Manually trigger a presence check for all known peers
+     */
+    async refreshPresence() {
+        console.log('🔄 Manually refreshing presence...');
+        await this.checkPeerPresence();
+    }
+
+    disconnect() {
+        this.stopPresenceTracking();
+        if (this.peer) {
+            this.peer.destroy();
+            this.peer = null;
+        }
+        this.connections.clear();
+        console.log('🔌 Disconnected from PeerJS');
     }
 
     leaveRoom() {

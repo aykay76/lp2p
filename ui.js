@@ -1,3 +1,16 @@
+// UI Elements
+const statusIndicator = document.getElementById('statusIndicator');
+const statusText = document.getElementById('statusText');
+const offerText = document.getElementById('offerText');
+const answerInput = document.getElementById('answerInput');
+const offerInput = document.getElementById('offerInput');
+const answerText = document.getElementById('answerText');
+const messagesDiv = document.getElementById('messages');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const setAnswerBtn = document.getElementById('setAnswerBtn');
+
+
 function removeOfferBlock(connectionId, blockId) {
     const entry = connections.get(connectionId);
     if (entry && entry.pc && entry.pc.connectionState !== 'connected') {
@@ -37,13 +50,7 @@ function copyRoomCode() {
             alert('Room code copied to clipboard!');
         }).catch(err => {
             console.error('Failed to copy:', err);
-            // Fallback: select text
-            const display = document.getElementById('roomCodeDisplay');
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(display);
-            selection.removeAllRanges();
-            selection.addRange(range);
+            alert('Failed to copy to clipboard');
         });
     }
 }
@@ -82,7 +89,23 @@ async function initRoomsUI() {
     if (!list) return;
     const rooms = await window.LP2PRoomStore.getAllRooms();
     renderRoomsList(rooms);
+    // Auto-join rooms marked for autoRejoin on load
+    try {
+        for (const r of rooms || []) {
+            if (r.autoRejoin) {
+                // attempt to join room automatically
+                try {
+                    console.log('Auto-joining room', r.code);
+                    // call joinRoom asynchronously but don't block UI
+                    joinRoom(r.code).catch(e => console.warn('Auto-join failed for', r.code, e));
+                } catch (e) { console.warn('Auto-join error', e); }
+            }
+        }
+    } catch (e) { console.warn('initRoomsUI autojoin failed', e); }
 }
+
+// Presence tracking is now integrated into PeerJS signaling
+// presenceMap is maintained by window.globalPeerJS via the onPresenceUpdate callback
 
 function renderRoomsList(rooms) {
     const list = document.getElementById('channelsList');
@@ -175,22 +198,47 @@ async function createRoom({ name, capacity = 0 }){
 function displayIdentity() {
     const identityInfo = document.getElementById('identityInfo');
     if (!identityInfo) return;
-    
     const fingerprint = ownIdentity.fingerprint;
     const keyId = ownIdentity.keyId;
     const displayName = ownIdentity.profile.name || 'Anonymous';
-    
-    identityInfo.innerHTML = `
-        <div class="peer-info-top">
-            <div>
-                <strong>Your Identity</strong><br>
-                Name: <strong>${displayName}</strong> 
-                <button onclick="changeName()" class="edit-btn">✏️ Edit</button><br>
-                Key ID: <code>${keyId}</code><br>
-                Fingerprint: <code class="code-small">${fingerprint}</code>
+
+    // Show compact identity badge in header; clicking opens popup with details
+    identityInfo.innerHTML = `<div id="userBadge" class="user-badge" onclick="toggleIdentityPopup()">${displayName}</div>`;
+
+    // Ensure popup element exists
+    let popup = document.getElementById('identityPopup');
+    if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'identityPopup';
+        popup.className = 'identity-popup';
+        popup.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <strong>Your Identity</strong>
+                <button onclick="closeIdentityPopup()" class="edit-btn">✖</button>
             </div>
-        </div>
-    `;
+            <div><strong>Name:</strong> ${displayName}</div>
+            <div style="margin-top:8px;"><strong>Key ID:</strong> <div class="mono">${keyId}</div></div>
+            <div style="margin-top:8px;"><strong>Fingerprint:</strong> <div class="mono">${fingerprint}</div></div>
+            <div style="margin-top:10px; display:flex; gap:8px;"><button onclick="changeName()" class="btn-primary">Edit Name</button></div>
+        `;
+        document.body.appendChild(popup);
+    } else {
+        // update contents
+        popup.querySelector('.mono') && (popup.querySelectorAll('.mono')[0].textContent = keyId);
+        popup.querySelectorAll('.mono')[1] && (popup.querySelectorAll('.mono')[1].textContent = fingerprint);
+    }
+}
+
+function toggleIdentityPopup() {
+    const popup = document.getElementById('identityPopup');
+    if (!popup) return;
+    if (popup.style.display === 'block') popup.style.display = 'none'; else popup.style.display = 'block';
+}
+
+function closeIdentityPopup() {
+    const popup = document.getElementById('identityPopup');
+    if (!popup) return;
+    popup.style.display = 'none';
 }
 
 /**
@@ -270,7 +318,10 @@ function updatePeerRoster() {
             'ultimate': '<span class="trust-badge trust-ultimate">⭐</span>'
         };
         
-        const statusIndicator = isConnected ? '🟢 Connected' : '⚪ Known (via host)';
+        // Online if we have an entry in presenceMap (maintained by globalPeerJS), else connected if direct dc open, else known
+        const presenceMap = window.presenceMap || new Map();
+        const isOnline = presenceMap.has(pid);
+        const statusIndicator = isConnected ? '🟢 Connected' : (isOnline ? '🟢 Online' : '⚪ Known');
         
         html += `
             <div class="peer-item ${isSelected ? 'selected' : ''}" onclick="selectPeer('${pid}')">
@@ -472,6 +523,46 @@ function showUsernameModal() {
     });
 }
 
+    /**
+     * Prompt user to add a contact by fingerprint.
+     * Attempts to derive a peerId from the fingerprint and create a direct offer.
+     */
+    function promptAddContact() {
+        const fingerprint = prompt('Enter contact fingerprint (you can paste short or full fingerprint):');
+        if (!fingerprint) return;
+
+        // Try to derive peerId heuristically from fingerprint
+        const pid = parseFingerprintToPeerId(fingerprint);
+        if (!pid) return alert('Could not parse fingerprint to a peer id. Try pasting the peer id directly.');
+
+        const ok = confirm(`Connect to peer ${pid} to fetch profile and add to contacts?`);
+        if (!ok) return;
+
+        // Initiate direct offer via presence signaling (user must configure presence server)
+        if (typeof createDirectOffer === 'function') {
+            createDirectOffer(pid);
+            addSystemMessage(`Attempting to connect to ${pid} to fetch profile...`);
+        } else {
+            alert('Direct offer function not available yet. Try connecting presence first.');
+        }
+    }
+
+    /**
+     * Heuristic: parse a fingerprint string to derive the lp2p peer id.
+     * Strips non-hex characters, uses first 8 hex characters and prefixes 'peer-'.
+     */
+    function parseFingerprintToPeerId(fp) {
+        if (!fp || typeof fp !== 'string') return null;
+        // If user pasted a peer id directly, return as-is (basic validation)
+        const m = fp.trim().match(/^peer-[0-9a-fA-F]+$/i);
+        if (m) return fp.trim();
+        // Remove non-hex characters
+        const cleaned = fp.replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+        if (cleaned.length < 8) return null;
+        const first8 = cleaned.slice(0, 8);
+        return 'peer-' + first8;
+    }
+
 /**
  * Set username and create identity
  */
@@ -503,9 +594,15 @@ async function setUsername() {
     
     // Initialize message handlers
     initMessageHandlers();
+    // Render known peers into the roster
+    try { updatePeerRoster(); } catch(e) { console.warn('updatePeerRoster failed', e); }
     
     console.log('Local P2P Messenger initialized with protocol v' + LP2P.PROTOCOL.VERSION);
-    updateStatus('', 'Disconnected');
+    
+    // Auto-connect to PeerJS (call global function from index.html)
+    if (typeof initPeerJSConnection === 'function') {
+        await initPeerJSConnection();
+    }
 }
 
 /**
@@ -516,6 +613,64 @@ messageInput.addEventListener('keypress', (event) => {
         sendMessage();
     }
 });
+
+/**
+ * Initialize sidebar resizer for contacts/rooms sections
+ */
+function initSidebarResizer() {
+    const resizer = document.getElementById('sidebarResizer');
+    const contactsSection = document.getElementById('contactsSection');
+    const roomsSection = document.getElementById('roomsSection');
+    
+    if (!resizer || !contactsSection || !roomsSection) return;
+    
+    let isResizing = false;
+    let startY = 0;
+    let startContactsHeight = 0;
+    let startRoomsHeight = 0;
+    
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startContactsHeight = contactsSection.offsetHeight;
+        startRoomsHeight = roomsSection.offsetHeight;
+        
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        const deltaY = e.clientY - startY;
+        const newContactsHeight = startContactsHeight + deltaY;
+        const newRoomsHeight = startRoomsHeight - deltaY;
+        
+        // Enforce minimum heights
+        const minHeight = 150;
+        if (newContactsHeight >= minHeight && newRoomsHeight >= minHeight) {
+            contactsSection.style.flex = `0 0 ${newContactsHeight}px`;
+            roomsSection.style.flex = `0 0 ${newRoomsHeight}px`;
+        }
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
+}
+
+// Initialize resizer when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSidebarResizer);
+} else {
+    initSidebarResizer();
+}
 
 // Export for use in main app
 if (typeof window !== 'undefined') {
@@ -540,10 +695,13 @@ if (typeof window !== 'undefined') {
         disableChat,
         showUsernameModal,
         setUsername,
+        toggleIdentityPopup,
+        closeIdentityPopup,
         // Rooms UI
         initRoomsUI,
         renderRoomsList,
         createRoomDialog,
-        createRoom
+        createRoom,
+        initSidebarResizer
     };
 }

@@ -10,20 +10,16 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔗 Local P2P Messenger</h1>
-            <div class="subtitle">WebRTC-based peer-to-peer communication</div>
-        </div>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="app-title">🔗 Local P2P Messenger</div>
+            <div class="app-subtitle">WebRTC peer-to-peer</div>
+            <div id="identityInfo" class="identity-badge">Initializing...</div>
+        </header>
 
         <div class="status-bar">
             <div class="status-indicator" id="statusIndicator"></div>
             <div class="status-text" id="statusText">Disconnected</div>
-        </div>
-
-        <!-- Identity Info -->
-        <div id="identityInfo" class="identity-info">
-            Initializing identity...
         </div>
 
         <!-- Username Setup Modal (shown on first load) -->
@@ -94,51 +90,97 @@
             </div>
         </div>
 
-        <div class="main-content">
-            <!-- Easy Connection Panel -->
-            <div class="panel panel-hero">
-                <h2>🚀 Quick Connect</h2>
-                
-                <div class="flex-row mb-16">
-                    <button class="btn-primary flex-1" onclick="createRoom()">🏠 Create Room</button>
-                    <button class="btn-primary flex-1" onclick="showJoinRoomDialog()">🔗 Join Room</button>
-                </div>
-
-                <div id="roomDisplay" class="room-display">
-                    <div class="small-muted">Room Code</div>
-                    <div id="roomCodeDisplay" class="room-code">------</div>
-                    <div class="small-muted">Share this code with others to let them join</div>
-                    <div id="qrCodeContainer" class="qr-container">
-                        <img id="qrCodeImage" class="qr-image">
+        <div class="app-body">
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-section contacts-section" id="contactsSection">
+                    <h3>👥 Contacts</h3>
+                    <div id="peerRosterList" class="section-content">
+                        <div class="no-peers">No peers</div>
                     </div>
-                    <button onclick="copyRoomCode()" class="btn-success mr-8">📋 Copy Code</button>
-                    <button onclick="showQRCode()" class="btn-primary">📱 Show QR</button>
+                    <div class="sidebar-actions">
+                        <button class="btn-primary btn-small" onclick="promptAddContact()">➕ Add Contact</button>
+                    </div>
+                    <div class="sidebar-actions" style="margin-top:6px;">
+                        <button class="btn-secondary btn-small" onclick="refreshPresence()" title="Ping all contacts to check who's online">🔄 Check Who's Online</button>
+                    </div>
                 </div>
 
-                <div class="muted-box">
-                    <strong>💡 Tip:</strong> Room-based connection uses localStorage. Works great for same-device testing or devices on the same network with shared storage.
-                </div>
-            </div>
+                <div class="sidebar-resizer" id="sidebarResizer"></div>
 
-            <!-- Manual Signaling (Advanced) - Collapsed by default -->
-            <details class="panel panel-border">
-                <summary class="summary-btn">
-                    ⚙️ Manual Signaling (Advanced)
-                </summary>
-                
-                <div class="margin-top-12">
-                    <!-- Peer A (Offerer) Panel -->
-                    <div class="section-margin">
+                <div class="sidebar-section rooms-section" id="roomsSection">
+                    <h3>📁 Rooms</h3>
+                    <div id="channelsList" class="section-content">
+                        <div class="no-rooms">No channels yet</div>
+                    </div>
+                    <div class="sidebar-actions">
+                        <button class="btn-primary btn-small" onclick="createRoomDialog()">➕ New Room</button>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="main-area">
+                <section id="roomView" class="panel panel-hero">
+                    <h2 id="roomTitle">🚀 Quick Connect</h2>
+                    <div class="flex-row mb-16">
+                        <button class="btn-primary flex-1" onclick="createRoom()">🏠 Create Room</button>
+                        <button class="btn-primary flex-1" onclick="showJoinRoomDialog()">🔗 Join Room</button>
+                    </div>
+
+                    <div id="roomDisplay" class="room-display">
+                        <div class="small-muted">Room Code</div>
+                        <div id="roomCodeDisplay" class="room-code">------</div>
+                        <div class="small-muted">Share this code with others to let them join</div>
+                        <div id="qrCodeContainer" class="qr-container">
+                            <img id="qrCodeImage" class="qr-image">
+                        </div>
+                        <button onclick="copyRoomCode()" class="btn-success mr-8">📋 Copy Code</button>
+                        <button onclick="showQRCode()" class="btn-primary">📱 Show QR</button>
+                    </div>
+
+                    <div class="muted-box">
+                        <strong>💡 Tip:</strong> Room-based connection uses localStorage. Works great for same-device testing or devices on the same network with shared storage.
+                    </div>
+                </section>
+
+                <section class="panel chat-panel">
+                    <div class="chat-header">
+                        <div class="chat-title">💬 Messages</div>
+                        <div id="peerInfoPanel" class="peer-info-panel">
+                            <div class="peer-info-top">
+                                <div class="flex-1">
+                                    <strong>Selected Peer</strong><br>
+                                    <div id="peerName" class="peer-name-style"></div>
+                                    <div class="small-code">Key ID: <code id="peerKeyId"></code><br>Fingerprint: <code id="peerFingerprint" class="small-code"></code></div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mb-8"><strong class="trust-strong">Trust Level:</strong><br>
+                                        <select id="trustLevelSelect" onchange="updateTrustLevel()" class="trust-select">
+                                            <option value="unknown">❓ Unknown</option>
+                                            <option value="untrusted">⛔ Untrusted</option>
+                                            <option value="marginal">⚠️ Marginal</option>
+                                            <option value="full">✅ Full Trust</option>
+                                        </select>
+                                    </div>
+                                    <button onclick="showFingerprintComparison()" class="verify-btn">🔍 Verify Fingerprint</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="messages" id="messages"><div class="center-muted">No connection yet. Complete the signaling process to start chatting.</div></div>
+
+                    <div class="message-input-group"><input type="text" id="messageInput" placeholder="Type your message..." disabled><button class="btn-primary" id="sendBtn" onclick="sendMessage()" disabled>Send</button></div>
+                </section>
+
+                <!-- Manual signaling section (collapsible) -->
+                <details class="panel" style="margin-top: 16px;">
+                    <summary class="summary-btn">🔧 Manual Signaling (Advanced)</summary>
+                    <div style="margin-top: 12px;">
                         <h3 class="h3-style">👤 Peer A (Offerer)</h3>
-                        
                         <div class="instructions">
-                            <strong>Step 1:</strong> Click "Create Offer" to start
+                            <strong>Step 1:</strong> Create an offer
                         </div>
-
-                        <div class="button-group">
-                            <button class="btn-primary" id="createOfferBtn" onclick="createOffer()">Create Offer</button>
-                        </div>
-
+                        <button class="btn-primary" id="createOfferBtn" onclick="createOffer()">Create Offer</button>
                         <textarea id="offerText" class="signal-area" placeholder="Your offer will appear here..." readonly></textarea>
                         
                         <div class="help-text">📋 Copy this offer and paste it in Peer B on the other browser</div>
@@ -148,11 +190,8 @@
                         <textarea id="answerInput" class="signal-area" placeholder="Paste the answer from Peer B here..."></textarea>
                         
                         <button class="btn-success" id="setAnswerBtn" onclick="setAnswer()" disabled>Apply Answer</button>
-                    </div>
 
-                    <!-- Peer B (Answerer) Panel -->
-                    <div class="section-margin">
-                        <h3 class="h3-style">👤 Peer B (Answerer)</h3>
+                        <h3 class="h3-style" style="margin-top: 20px;">👤 Peer B (Answerer)</h3>
                         
                         <div class="instructions">
                             <strong>Step 2:</strong> Paste the offer from Peer A
@@ -167,74 +206,15 @@
                         <textarea id="answerText" class="signal-area" placeholder="Your answer will appear here..." readonly></textarea>
                         
                         <div class="help-text">📋 Copy this answer and paste it in Peer A on the other browser</div>
-                    </div>
 
-                    <!-- Additional Offers (Multi-Party Host) -->
-                    <div id="additionalOffersPanel">
-                        <h3 class="h3-style">🧩 Additional Offers</h3>
+                        <h3 class="h3-style" style="margin-top: 20px;">🧩 Additional Offers</h3>
                         <div class="small-muted">Create separate offers for each extra peer you want to join. Each peer creates an answer from its own browser and you apply it here.</div>
                         <div id="multiOffersContainer" class="multi-offers"></div>
                         <button class="btn-secondary mt-8" onclick="createAdditionalOffer()">➕ New Offer</button>
                         <div class="help-text">Use a new offer per joining peer. Answers can't be reused.</div>
                     </div>
-                </div>
-            </details>
-
-            <!-- Chat Section -->
-            <div class="chat-section panel">
-                <!-- Peer Roster Sidebar -->
-                <div class="peer-roster">
-                    <h3>👥 Connected Peers</h3>
-                    <div id="peerRosterList">
-                        <div class="peer-roster no-peers">
-                            No peers connected
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chat Content -->
-                <div class="chat-content">
-                    <h2>💬 Messages</h2>
-                    
-                    <!-- Peer Info Panel (shown when peer selected) -->
-                    <div id="peerInfoPanel" class="peer-info-panel">
-                        <div class="peer-info-top">
-                            <div class="flex-1">
-                                <strong>Selected Peer</strong><br>
-                                <div id="peerName" class="peer-name-style"></div>
-                                <div class="small-code">
-                                    Key ID: <code id="peerKeyId"></code><br>
-                                    Fingerprint: <code id="peerFingerprint" class="small-code"></code>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="mb-8">
-                                    <strong class="trust-strong">Trust Level:</strong><br>
-                                    <select id="trustLevelSelect" onchange="updateTrustLevel()" class="trust-select">
-                                        <option value="unknown">❓ Unknown</option>
-                                        <option value="untrusted">⛔ Untrusted</option>
-                                        <option value="marginal">⚠️ Marginal</option>
-                                        <option value="full">✅ Full Trust</option>
-                                    </select>
-                                </div>
-                                <button onclick="showFingerprintComparison()" class="verify-btn">🔍 Verify Fingerprint</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="messages" id="messages">
-                    <div class="center-muted">
-                        No connection yet. Complete the signaling process to start chatting.
-                    </div>
-                </div>
-
-                <div class="message-input-group">
-                    <input type="text" id="messageInput" placeholder="Type your message..." disabled>
-                    <button class="btn-primary" id="sendBtn" onclick="sendMessage()" disabled>Send</button>
-                </div>
-                </div>
-            </div>
+                </details>
+            </main>
         </div>
     </div>
 
@@ -276,9 +256,9 @@
     let activePeerId = null; // Currently focused peer for UI/trust panel
 
     // Room-based signaling
-    let roomSignaling = null;
-    let currentRoomCode = null;
-    let isRoomHost = false;
+        let roomSignaling = null;
+        let currentRoomCode = null;
+        let isRoomHost = false;
 
     // Helper: get connection entry by peerId
     function getConnectionByPeerId(pid) {
@@ -441,19 +421,6 @@
                 alert('Failed to apply answer: ' + error.message);
             }
         }
-
-        // UI Elements
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
-        const offerText = document.getElementById('offerText');
-        const answerInput = document.getElementById('answerInput');
-        const offerInput = document.getElementById('offerInput');
-        const answerText = document.getElementById('answerText');
-        const messagesDiv = document.getElementById('messages');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const setAnswerBtn = document.getElementById('setAnswerBtn');
-
 
         /**
          * Initialize RTCPeerConnection
@@ -685,7 +652,7 @@
                 await waitForICEOn(pc);
 
                 const offerSDP = JSON.stringify(pc.localDescription);
-                await roomSignaling.postOffer(offerSDP, '*');  // Broadcast to all (host will pick it up)
+                        await roomSignaling.postOffer(offerSDP, '*');  // Broadcast to all (host will pick it up)
                 
                 console.log('Posted offer to room successfully');
             } catch (error) {
@@ -693,6 +660,44 @@
                 alert('Could not connect to room. Make sure the host has created the room first!\n\nError: ' + error.message);
             }
         }
+
+                /**
+                 * Create a direct offer to a specific peer via global PeerJS signaling
+                 */
+                async function createDirectOffer(targetPeerId) {
+                    if (!window.globalPeerJS || !window.globalPeerJS.peer) {
+                        alert('Not connected to P2P network. Please wait for connection or refresh the page.');
+                        return;
+                    }
+
+                    try {
+                        const connectionId = crypto.randomUUID();
+                        const pc = new RTCPeerConnection(config);
+                        const dc = pc.createDataChannel('messages');
+
+                        connections.set(connectionId, { pc, dc, peerId: null, state: 'offer-created' });
+
+                        setupDataChannelForConnection(dc, connectionId);
+                        setupPeerConnectionForConnection(pc, connectionId);
+
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        await waitForICEOn(pc);
+
+                        const offerSDP = JSON.stringify(pc.localDescription);
+                        // Send via global PeerJS to specific peer
+                        await window.globalPeerJS.sendToPeer(`lp2p-${targetPeerId}`, {
+                            type: 'offer',
+                            from: peerId,
+                            sdp: offerSDP
+                        });
+                        console.log('✉️ Sent direct offer to', targetPeerId);
+                        addSystemMessage(`📤 Connecting to ${targetPeerId.substring(0, 12)}...`);
+                    } catch (err) {
+                        console.error('Failed to create direct offer', err);
+                        alert('Failed to create direct offer: ' + err.message);
+                    }
+                }
 
         /**
          * Handle incoming offer (host or peer)
@@ -1139,6 +1144,37 @@
             sendRawMessage(message);
         }
 
+        /**
+         * Show PeerJS connection status
+         */
+        function showPeerJSStatus() {
+            if (window.globalPeerJS && window.globalPeerJS.peer) {
+                const onlinePeers = window.globalPeerJS.getOnlinePeers();
+                alert(`✅ Connected to P2P network\n\nYour ID: ${peerId}\nOnline peers: ${onlinePeers.length}\n\nYou can connect to peers by selecting them from the Contacts list.`);
+            } else {
+                alert('❌ Not connected to P2P network.\n\nPlease refresh the page to reconnect.');
+            }
+        }
+        
+        /**
+         * Manually refresh presence for all known contacts
+         */
+        async function refreshPresence() {
+            if (!window.globalPeerJS) {
+                alert('Not connected to P2P network');
+                return;
+            }
+            
+            const knownPeers = identityManager.getAllPeers();
+            if (knownPeers.length === 0) {
+                alert('No contacts to check. Add some contacts first!');
+                return;
+            }
+            
+            addSystemMessage(`🔄 Checking presence for ${knownPeers.length} contacts...`);
+            await window.globalPeerJS.refreshPresence();
+            addSystemMessage(`✅ Presence check complete`);
+        }
 
         // ====================================================================
         // Initialize
@@ -1176,8 +1212,90 @@
             // Initialize rooms UI from local store
             try { if (typeof initRoomsUI === 'function') await initRoomsUI(); } catch(e) { console.warn('initRoomsUI failed', e); }
             
+            // Populate contacts list with known peers from localStorage
+            try { updatePeerRoster(); } catch(e) { console.warn('updatePeerRoster failed', e); }
+            
             console.log('Local P2P Messenger initialized with protocol v' + LP2P.PROTOCOL.VERSION);
-            updateStatus('', 'Disconnected');
+            
+            // Auto-connect to PeerJS with presence tracking
+            await initPeerJSConnection();
+        }
+        
+        /**
+         * Initialize PeerJS connection with presence tracking
+         */
+        async function initPeerJSConnection() {
+            try {
+                updateStatus('connecting', 'Connecting to P2P network...');
+                
+                // Create global PeerJS signaling instance
+                window.globalPeerJS = new LP2PSignaling.PeerJSSignaling({
+                    enablePresence: true,
+                    onGetKnownPeers: () => {
+                        // Return list of known peer IDs from identity manager
+                        if (!identityManager) return [];
+                        const allPeers = identityManager.getAllPeers();
+                        return allPeers.map(p => p.peerId);
+                    },
+                    onPresenceUpdate: (onlinePeers) => {
+                        console.log('📡 Online peers:', onlinePeers.length);
+                        // Update presence map for UI
+                        if (typeof window !== 'undefined') {
+                            if (!window.presenceMap) window.presenceMap = new Map();
+                            const now = Date.now();
+                            // Clear old entries
+                            window.presenceMap.clear();
+                            // Add current online peers
+                            for (const pid of onlinePeers) {
+                                window.presenceMap.set(pid, { lastSeen: now, via: 'p2p-ping' });
+                            }
+                            // Update UI roster
+                            if (typeof updatePeerRoster === 'function') {
+                                updatePeerRoster();
+                            }
+                        }
+                    },
+                    onConnectionStatusChange: (status, error) => {
+                        console.log('PeerJS status:', status);
+                        if (status === 'connected') {
+                            updateStatus('connected', 'Connected to P2P network');
+                            // Hide status bar after 2 seconds
+                            setTimeout(() => {
+                                const statusBar = document.querySelector('.status-bar');
+                                if (statusBar) statusBar.style.display = 'none';
+                            }, 2000);
+                        } else if (status === 'disconnected' || status === 'error') {
+                            updateStatus('error', 'Disconnected from P2P network');
+                            // Show status bar
+                            const statusBar = document.querySelector('.status-bar');
+                            if (statusBar) statusBar.style.display = 'flex';
+                        }
+                    }
+                });
+                
+                // Connect to PeerJS
+                await window.globalPeerJS.connect(peerId);
+                
+                // Set up signaling for incoming connections
+                window.globalPeerJS.onOffer = async (sdp, fromPeerId) => {
+                    console.log('Global: Received offer from', fromPeerId);
+                    await handleIncomingOffer(sdp, fromPeerId);
+                };
+                
+                window.globalPeerJS.onAnswer = async (sdp, fromPeerId) => {
+                    console.log('Global: Received answer from', fromPeerId);
+                    await handleIncomingAnswer(sdp, fromPeerId);
+                };
+                
+                addSystemMessage('✅ Connected to P2P network');
+                console.info('🔎 Presence tracking: Direct P2P pings (no server required)');
+                
+            } catch (error) {
+                console.error('Failed to connect to PeerJS:', error);
+                updateStatus('error', 'Failed to connect: ' + error.message);
+                // Keep status bar visible on error
+                addSystemMessage('⚠️ Failed to connect to P2P network. You can still create/join rooms.');
+            }
         }
 
         // Initialize on load
